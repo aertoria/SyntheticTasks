@@ -477,12 +477,8 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 
 *Pitch:* replace static "hard sets" with generators whose knob follows the policy.
 - **Mechanism.** Give each family an integer knob and a sliding window: promote when top-level accuracy is ≥ 0.9, with τ_num = 8 × rollouts and a window of 4 ([RLVE](https://arxiv.org/abs/2511.07317)). Alternatives are a proportional controller ([SCALER](https://arxiv.org/abs/2601.04809)) or "raise κ if mean reward > 0.5" ([InternGeometry](https://arxiv.org/abs/2512.10534)).
-- **Evidence.**
-  - RLVE gave +3.37 on an already-saturated model, against +0.49 from more than 3× the compute of continued RL. A static range with a low cap drove the effective-prompt ratio to 0.
-  - SCALER reached 54.25, against 53.52 for RLVE.
-  - InternGeometry's CBRL scored 44/50 on IMO-50, against 38 without the schedule.
-  - Breadth pays: 400 environments × 40 instances beat 25 × 640 (75.19 vs 71.20, [ReSyn](https://arxiv.org/abs/2602.20117)). Selecting environments by ability coverage beat using all of them ([AES](https://arxiv.org/abs/2608.03571)).
-- **First experiment.** Wrap your 10 largest seed families. *Success:* the effective-prompt ratio stays up through training, and held-out scores improve.
+- **Evidence.** RLVE gave +3.37 on an already-saturated model vs +0.49 from more than 3× the compute of continued RL; a static low-cap range drove the effective-prompt ratio to 0. SCALER reached 54.25 vs 53.52 for RLVE. CBRL scored 44/50 on IMO-50 vs 38 without the schedule. Breadth pays: 400 environments × 40 instances beat 25 × 640 (75.19 vs 71.20, [ReSyn](https://arxiv.org/abs/2602.20117)), and selecting environments by ability coverage beat using all of them ([AES](https://arxiv.org/abs/2608.03571)).
+- **First experiment.** Wrap your 10 largest seed families. *Success:* effective-prompt ratio stays up and held-out scores improve.
 
 ### G2 · Route every prompt by pass rate: complexify, train or scaffold
 `Established` (components) / `Novel` (unified router) · **Moderate** · Effort **M**
@@ -513,12 +509,7 @@ def route(item, p_hat, history):
 
 *Pitch:* predict a child's pass rate from its parent's pass rate and the operator's measured effect, and skip most profiling.
 - **Mechanism.** Maintain a Beta prior per (operator, parent band, domain), update it with a 4–8-rollout pilot, and commit rollouts only when the posterior is plausibly in band.
-- **Why.** Profiling cost about 36% of all rollout tokens in note 18's worked example. Existing predictors are weak:
-  - pre-rollout agentic predictors reach ρ = 0.399 in distribution and 0.225 on unseen benchmarks ([2608.05797](https://arxiv.org/abs/2608.05797));
-  - [PROPEL](https://arxiv.org/abs/2606.18284) probes reach 0.59–0.66 balanced accuracy;
-  - similarity-based priors break for adversarial variants.
-
-  Operator effects, by contrast, are large (information removal: −70 to −100 points). Note 18 proposes exactly this.
+- **Why.** Profiling cost about 36% of rollout tokens in note 18's worked example, and existing predictors are weak: pre-rollout agentic predictors reach ρ = 0.399 in distribution and 0.225 on unseen benchmarks ([2608.05797](https://arxiv.org/abs/2608.05797)); [PROPEL](https://arxiv.org/abs/2606.18284) probes reach 0.59–0.66 balanced accuracy; similarity-based priors break for adversarial variants. Operator effects, by contrast, are large (information removal: −70 to −100 points). Note 18 proposes exactly this.
 - **First experiment.** Log 5k (parent p̂, operator, child p̂) triples and fit the prior. *Success:* fewer rollouts at a fixed misfiling rate, with calibration error reported.
 
 ### G4 · Pilot–commit profiling, rollout reallocation and zero-variance recycling
@@ -526,11 +517,7 @@ def route(item, p_hat, history):
 
 *Pitch:* spend rollouts where the signal is before you buy new tasks.
 - **Mechanism.** Pilot 16 rollouts per item, skip items with p̂ > 0.75, defer those with p̂ < 0.125, and commit 48 to the rest ([Pilot-Commit](https://arxiv.org/abs/2605.26606)). Allocate rollouts by knapsack ([Knapsack RL](https://arxiv.org/abs/2509.25849)). Recycle zero-variance items instead of deleting them ([query recycling](https://arxiv.org/abs/2606.10709)).
-- **Evidence.**
-  - Pilot-Commit needs 1.9× fewer rollouts than GRPO and 4.0× fewer than DAPO.
-  - Knapsack allocation is worth about 2× compute, and 577 prompts labelled "extremely hard" produced positives during training.
-  - About 20% of recycled queries later flipped to carrying signal, and recycled queries supplied about three-quarters of accepted groups late in training.
-  - A pass@6 = 0 label is noisy: 10–29% of such items are reachable under perturbed decoding.
+- **Evidence.** Pilot-Commit needs 1.9× fewer rollouts than GRPO and 4.0× fewer than DAPO. Knapsack allocation is worth about 2× compute, and 577 prompts labelled "extremely hard" produced positives during training. About 20% of recycled queries later carried signal, supplying about three-quarters of accepted groups late in training. A pass@6 = 0 label is noisy: 10–29% of such items are reachable under perturbed decoding.
 - **First experiment.** A/B test on the current run. *Success:* equal accuracy with fewer rollouts.
 
 ### G5 · A bandit over (operator × domain), driven by held-out deltas
@@ -552,12 +539,7 @@ def route(item, p_hat, history):
   4. Annealed solution prefixes ([QuestA](https://arxiv.org/abs/2507.13266)).
   5. One off-policy trace per group ([LUFFY](https://arxiv.org/abs/2504.14945)).
   6. A dense per-test reward, then binary ([DELTA-Code](https://arxiv.org/abs/2509.21016)).
-- **Evidence.**
-  - Cog-DRIFT: +10.11 and +8.64 on items at pass@64 = 0.
-  - QuestA's annealed prefixes scored 63.26 vs 60.26 for a fixed 50% prefix. [Scaf-GRPO](https://arxiv.org/abs/2510.19807) needed hints on only 17.4% of samples and raised AIME24 from 30.0 to 43.3.
-  - DELTA-Code stayed below 1% for 450 steps, then "grokked".
-  - AutoOR went from 0% at pass@64 to 48.98% by fading syntax scaffolds.
-  - Caution: items at pass@8 = 0 lowered averages by 5.75, 11.24 and 1.07 points, and one harmful sample collapsed response length from 510.7 to 45.7 tokens in 58 steps ([2605.28388](https://arxiv.org/abs/2605.28388)).
+- **Evidence.** Cog-DRIFT: +10.11 and +8.64 on items at pass@64 = 0. QuestA's annealed prefixes scored 63.26 vs 60.26 for a fixed 50% prefix; [Scaf-GRPO](https://arxiv.org/abs/2510.19807) needed hints on only 17.4% of samples and raised AIME24 from 30.0 to 43.3. DELTA-Code stayed below 1% for 450 steps, then "grokked". AutoOR went from 0% at pass@64 to 48.98% by fading syntax scaffolds. Caution: items at pass@8 = 0 lowered averages by 5.75, 11.24 and 1.07 points, and one harmful sample collapsed response length from 510.7 to 45.7 tokens in 58 steps ([2605.28388](https://arxiv.org/abs/2605.28388)).
 - **First experiment.** On 3 audited families at p ≈ 0, compare the format ladder with prefixes. *Success:* the families enter the band, and the scaffolds are fully withdrawn by the end.
 
 ---
@@ -583,7 +565,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* for search and terminal agents, SFT on hard verified trajectories goes a long way.
 - **Evidence.**
   - FORT-Searcher is SFT-only and reaches BrowseComp 72.2 ([FORT](https://arxiv.org/abs/2606.12087)).
-  - [OpenSeeker](https://arxiv.org/abs/2603.15594)-v2 used 10.6k SFT samples to beat Tongyi DeepResearch's CPT+SFT+RL (46.0 vs 43.4).
+  - [OpenSeeker](https://arxiv.org/abs/2603.15594)-v2 used 10.6k SFT samples to beat Tongyi DeepResearch's CPT+SFT+RL on BrowseComp (46.0 vs 43.4).
   - [SkillSynth](https://arxiv.org/abs/2604.25727)'s skill-graph data beat single-skill SFT by 8.3 points on TB2.0.
   - Counter-evidence for procedural and scientific tasks: SFT scored −3.9 against +5.4 for RL on IPhO (Sim2Reason), and 26 against 80 on Hard-LP for [AutoOR](https://arxiv.org/abs/2604.16804).
 - **Rule.** Use SFT for breadth of agentic behavior and formats. Use RL for composition (B1, B2).
@@ -737,7 +719,7 @@ The formula favors cheap, label-preserving work by design. The highest-*impact* 
 | 14 | [B1](#b1--serial-chaining-with-deterministic-adapters-and-a-horizon-curriculum) Serial chaining + horizon curriculum | Established | Strong | 4 | 5 | M | 10 | Chains of length 2–5, staged vs uniform |
 | 15 | [D1](#d1--recursive-solution-first-escalation-rst-for-executable-tasks) RST recursive escalation | Established | Moderate | 5 | 4 | M | 10 | 3 rounds on 200 executable seeds |
 
-**Runners-up (score 8–9):** A7 and A8 (9); C1, D4, D8, E2, F2, F3 and G6 (8).
+**Runners-up (score 8–10).** C1 and A3 score 10 but apply only to search/QA pools and to MCQ or exact-match pools respectively, so they rank below B1 and D1. A7 scores 9. At 8: A8, B4, B6, D4, D8, E2, F2, F3, G2, G6, H2, H3 and I2.
 
 **Best-scoring novel bets (score 4):** D2 (RST for workbooks and notebooks), J4 (online re-complexification) and B8 (branch–merge curricula). Run one of them in days 61–90, in the domain you care about most.
 
