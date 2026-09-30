@@ -889,3 +889,170 @@ Examples marked *(illustrative)* are my own constructions; the others come from 
 - *Keep it verifiable*: Take ground truth from graph search or reference replay. Verify and repair the *environment* before RL: 48.6% of raw tasks are feasible, 94.8% after repair. Isolate references from the agent.
 - *Sources*: AutoWebWorld, GUI-Genesis, PhoneWorld, Verified Synthetic Web Environments / VeriEnv / InfiniteWeb, RecreationWorld, CUA-Gym-Hub.
 
+## Insights & pitfalls
+
+1. **Checker errors are asymmetric, so choose and tune for precision.**
+   - VLM judges over-accept: ZeroGUI's best configuration had 61.5% precision; GUI-Genesis's base policy scores 63.76% by VLM judge and 38.93% by assertions; Explorer's verifier accepts about 26% false positives; FaraGen's ensemble still has a 16.7% false-positive rate. GPT-4o judging only the last screenshot has 40.5% precision on office apps (SEAgent).
+   - Hand-written scripts under-accept: VAGEN found no false positives in OSWorld-Verified scripts, and AgentRewardBench finds that rule-based evaluation underestimates success.
+   - ZeroGUI shows false positives hurt RL more, so require unanimity, hide the agent's self-report, and prefer state evidence.
+2. **Model-written checkers are the worst option unvalidated and the best option validated.** Gym-Anything's model-written end-state scripts agreed with humans 43.3% of the time, mostly because they failed to parse the output formats. OpenComputer's executed, endpoint-backed and self-repaired checkers reach 94.1%, against 79.2% for an agentic LLM judge; repair raised agreement from 85.2%. SCALECUA reaches 94.5% *executability* but only 78% expert agreement on OSWorld. **Executable is not the same as correct.**
+3. **Never let one agent write both the solution and the reward.** CUA-Gym saw the reward "re-check the construction procedure instead of measuring task completion", as in `chart_verified = True` and bare file-existence scoring. An information barrier plus a static forbidden-pattern scan fixed it. The rule transfers to code, SQL, spreadsheet and tool tasks.
+4. **GUI tasks leak to non-GUI shortcuts.**
+   - Epoch AI: about 15% of OSWorld tasks need only a terminal, and another 30% can largely substitute scripts for GUI work.
+   - Gym-Anything's integrity items caught fabricated forensic hashes and similar shortcuts (15 true positives in 21 flags), although in 18 of the 21 flagged runs the completion checklist had already failed the run.
+   - RecreationWorld measured per-model rates of network, protected-path and binary-inspection attempts.
+
+   If the target skill is GUI operation, reward *how* the state was reached (integrity items) or block the shortcut channels.
+5. **Feasibility is not usefulness.** In AutoPlay's generator ablation, chain-then-summarise tasks were the most executable (56.4%) but gave the weakest downstream agent (21.6 versus 38.2 AndroidWorld pass@1). Asking an LLM directly for "hard" tasks yields survivors that are easy: in AgentSynth, generation success fell to 11% while evaluation success stayed at 48%. Score generators by downstream gain on held-out environments.
+6. **Compose semantically, do not concatenate.** OSWorld 2.0 rejected LLM proposals for "shallow workflows that compose unrelated operations". Gym-Anything's guideline bans "artificially hard" chains of hundreds of subtasks. Qwen-CUA builds "interdependent phases rather than concatenating unrelated subtasks". ChainWorld needed explicit compatibility rules because naive chains break evaluators.
+7. **Pass-rate banding is now standard, and the band must be recomputed every iteration.**
+   - Bands in use: WebRL critic [0.05, 0.75]; UltraCUA [0.4, 0.8]; Qwen-CUA 1–7 of 8; SCALECUA Gaussian with μ=0.5, σ=0.25, EMA α=0.2, 20% uniform; MAI-UI four pass@K bands; UI-Simulator-Grow 25th–75th loss percentile (note 17).
+   - *Choose how to handle 0/K tasks deliberately.* MobileRL's failure-curriculum filter removes them after a cooldown (removing FCF costs 6.3 points). Qwen-UI-Agent instead keeps them in a low-budget monitoring pool and promotes them when they first succeed. The second option preserves the tasks that become learnable later.
+8. **Hard-biased sampling is not monotonically better.**
+   - In WebGym, 2:5:3 hard-biased sampling (34.5) lost to near-natural uniform sampling (38.2) and to easy-only sampling (36.9) under filtered-BC-style RL; a tighter step budget then gave 42.9.
+   - The ordering matters: MobileGUI-RL's easy-to-hard ordering added 10.8 points (32B), and MAI-UI's curriculum turned a +1.8 GRPO gain into +6.0.
+   - Keep easy anchors in the mix and let a curriculum move the mass.
+9. **Tasks that are too easy give zero GRPO advantage, and an efficiency reward is only a stopgap.** MobileGUI-RL's decaying efficiency factor and MobileRL's shortest-path reward break ties among all-success groups, so easy tasks still yield gradient. Removing the decaying reward cost 6.5 points (7B) in MobileGUI-RL. This trains efficiency, not new skills; you still need the operators above for new capabilities.
+10. **Environment diversity is a separate scaling axis from task count.**
+    - CUA-Gym: going from 10 to 80 environments gave gains more trajectories could not recover.
+    - WebGym: dropping half the domains lowered the peak from 34.5 to 31.0.
+    - MAI-UI: 32 → 512 parallel environments raised success from 65.5% to 70.7%.
+    - PhoneWorld: spending half of a matched RL budget on mock apps raised AndroidWorld from 77.2% to 83.2%.
+    - GUI-Genesis: performance rose monotonically from 240 to 969 environments.
+
+    When tasks saturate, new environments or states often beat harder wording.
+11. **Generators can outrun solvers; build on that asymmetry.** Checking an outcome is easier than achieving it (PAE). Forward-solving short steps is easier than inferring the whole plan (AgentSynth). Models can build working apps they cannot yet navigate (GUI-Genesis). Search with a process reward model solves tasks greedy decoding cannot (UI-Genie). Design generators around a *verified forward process* rather than an LLM imagining hard tasks.
+12. **Judge inputs matter.**
+    - More context helps: all screenshots beat the last one in ZeroGUI (precision 53.7 vs 47.5), and GPT-4o's precision on OSWorld rises from 46.3 to 74.6 with the full sequence (SEAgent).
+    - The agent's self-report hurts precision (44.3).
+    - Privileged set-up information (Gym-Anything, 93.3%), tool probing of hidden state (IRA 86.9%; VAGEN above 90%) and anchored goal references (GSAR: 64.4 → 90.2 accuracy) close gaps that pixels cannot, such as unsaved edits, the wrong setting tier, or two tokens typed into one cell.
+13. **Imperfect rewards can work, but the evidence is fragile.**
+    - UI-TARS-2's outcome reward model (F1 83.8, with notable false positives) still drove RL.
+    - Modelling the judge as a noisy binary channel added 5.1 points over raw judge rewards in PPO ([2606.24515](https://arxiv.org/abs/2606.24515)).
+    - OS-Themis's milestone-decomposed critic gave +10.3% on AndroidWorld RL ([2603.19191](https://arxiv.org/abs/2603.19191)).
+    - IRA rewards matched scripts within 0.9 points.
+    - But [2607.17136](https://arxiv.org/abs/2607.17136) shows single-run CUA RL gains are dominated by upstream variance; the data draw accounts for 48% on the hardest cell. A published-size gain would have the wrong sign about a third of the time (33–44% in the high-variance regime). AndroidWorld seeds alone swing results by about 7 points.
+
+    **Report k seeds before trusting any synthetic-task ablation, including your own.**
+14. **The best teacher is not the best source of distillation data.** In Gym-Anything, Kimi-K2.5 was the weakest teacher (39.8) but produced the best 2B and 3B students, beating Opus 4.5 (53.5). When SFT-ing on synthetic hard tasks, pick the teacher by measuring student results.
+15. **Watch for contamination.**
+    - ZeroGUI used OSWorld test tasks as generation exemplars and ran test-time RL on test instructions, so part of its gain is adaptation.
+    - SCALECUA found 2.10% exact reuse of judge templates against OSWorld.
+    - EvoCUA decontaminates at the instruction, configuration and evaluator level.
+    - MobileRL trains on AndroidWorld's own templates.
+
+    Hold out *environments*, not just instructions (WebGym's website-level split).
+16. **Industrial flywheels converge on one loop.**
+    1. Massive parallel sandboxes: Qwen-CUA with about 100K vCPUs; Qwen-UI-Agent with about 10K concurrent environments; MAI-UI with 500+ AVDs; OSGym at $0.20–0.30 per replica per day and about 1,420 trajectories per minute ([2511.11672](https://arxiv.org/abs/2511.11672)).
+    2. Taxonomy- or capability-driven task synthesis: CUA-Gym, EvoCUA, Qwen-CUA; GUI-Owl samples paths from human-annotated page DAGs ([2508.15144](https://arxiv.org/abs/2508.15144)).
+    3. Executable verifiers for RL and cheaper VLM step judges for SFT. Qwen-UI-Agent states this split and found step-filtered SFT data matched verifier-selected data.
+    4. A failure-analysis agent separates model, task, environment and verifier failures.
+    5. Targeted generation for the next iteration.
+
+    Live-web task proposal scales further but stays judge-bound: InSTA covers 150k sites with a judge at 82.6% accuracy ([2502.06776](https://arxiv.org/abs/2502.06776)); FaraGen costs about $1 per task with 83.3% verifier agreement.
+17. **Cost anchors per unit.**
+
+    | Pipeline | Cost |
+    |---|---|
+    | AutoWebWorld | $0.04 per verified trajectory |
+    | Explorer | $0.28 per successful trajectory |
+    | AgentSynth | $0.60 per trajectory |
+    | SCALECUA | $0.93–1.01 per accepted RL task |
+    | FaraGen | ~$1 per task |
+    | AgentHER | $2.98 per 3,000 relabelled trajectories |
+    | Go-Browse | about $976 for the whole WebArena dataset |
+    | GUI-Genesis, real-environment RL | about $240 per training step |
+
+    Yield matters as much as unit cost: SCALECUA kept about 12% of candidates, and CUA-Gym's two filters rejected about 3,100 and 1,278 loop-accepted tuples.
+18. **What transfers beyond GUIs.** Operators that transfer to any stateful environment (tools, SQL, spreadsheets, code, simulations):
+    - failure-seeded evolution and refill;
+    - joint initial/golden/checker generation behind an information barrier;
+    - evaluator-first composition;
+    - phase-state chaining;
+    - compatibility-checked composition;
+    - start-state regression;
+    - explicit-to-implicit goals;
+    - template parameterisation with distractor entities;
+    - state enrichment;
+    - perturbation, infeasibility and hidden-information injection;
+    - failure-analysis-targeted generation;
+    - hindsight relabeling;
+    - pass-rate banding with a monitoring pool.
+
+    GUI-specific pieces are pixel-level judging, UI-element injection and navigation-graph exploration (Go-Browse; SEE, [2607.18046](https://arxiv.org/abs/2607.18046); AutoSurfer, [2604.27253](https://arxiv.org/abs/2604.27253)). The graph idea still carries over to any discoverable state graph.
+
+## Open problems & research opportunities
+
+- **Accepting alternative valid solutions at scale.** Endpoint tests (checker(golden)=1, checker(initial)=0) show the checker points in the right direction, not that it covers other valid solutions. They also cannot tell a clean edit from a destructive sequence that recreates the same state; CUA-Gym acknowledges this. OSWorld 2.0 writes adversarial and false-negative probes by hand. Automatically generating alternative solutions and shortcut probes for pools of 10⁴–10⁵ tasks is open.
+- **Learned GUI task proposers.** Every generator reviewed here is a frozen LLM or agent followed by post-hoc filtering. None of the roughly 40 works trains the GUI task proposer itself on a learnability reward (0 < p < 1) combined with checker validity. Note 17 covers this for other domains, including DeepSeek-V4.1-Flash's trained task constructor.
+- **Predicting difficulty before rollouts.** Each candidate costs 8–16 VM rollouts. The only cheap proxies are WebRL's critic, MobileGUI-RL's simulated step count, WebGym's fact count, AutoWebWorld's FSM goal depth and AgentSynth's k. None is shown to be calibrated against the policy's actual pass rate.
+- **Verified RL tasks of 100–500+ steps.** CUA-World-Long (VLM-verified) and OSWorld 2.0 (hand-built, 108 tasks) are evaluation sets. No open pipeline yet produces thousands of semantically coupled long workflows with state-grounded partial credit and anti-hacking audits. Phase-state chaining plus compatibility checks is the most promising route.
+- **Checking the process, not just the end state.** Rewarding *how* a state was reached (through the GUI, without fabricated values, without a terminal bypass) is needed to train GUI skill rather than scripting. Current integrity checks are VLM-based and rarely change the outcome: 3 of Gym-Anything's 21 flags changed the pass result.
+- **Sim-to-real fidelity metrics.** Mock and surrogate apps transfer (GUI-Genesis, PhoneWorld, CUA-Gym-Hub, AutoWebWorld), but fidelity is uneven. PhoneWorld's functional-page coverage is 51–80% even though rendered-page coverage is above 96%, and cross-app gains did not transfer (20 → 18). There is no standard metric of which dynamics a surrogate omits or which surrogate-specific shortcuts policies learn.
+- **Conflicting evidence on curriculum direction.** TTI and MAI-UI gained from *growing* step budgets; WebGym gained from *tightening* them. MAI-UI and MobileGUI-RL gained from easy-to-hard schedules; WebGym found a hard-biased mix worse than natural sampling. There are no controlled studies that separate the RL algorithm (filtered BC, GRPO, PPO), the reward noise and the task distribution.
+- **Dynamic, streaming and multi-party tasks with verifiers.** Mid-task information, changing intent, simulated users and multi-agent coordination are the hardest phenomena in OSWorld 2.0. The consistency and exploitability of LLM user simulators in GUI RL have not been measured (note 17 reports that simulators elsewhere are too agreeable).
+- **Held-out environments and decontamination.** With open models above 80% on OSWorld-Verified and AndroidWorld, separating capability from overfitting to evaluator templates needs held-out *applications and states*, not just held-out instructions.
+- **Measurement rigour and cost accounting.** Few synthetic-task ablations report multi-seed confidence intervals. VM-hours per verified tuple, per-stage filter yields and the marginal value of harder versus more diverse tasks are reported inconsistently.
+
+## References
+
+1. Qi, Z., Liu, X., Iong, I. L., et al. (2024). *WebRL: Training LLM Web Agents via Self-Evolving Online Curriculum Reinforcement Learning*. ICLR 2025; arXiv:2411.02337. https://arxiv.org/abs/2411.02337
+2. Zhou, Y., Yang, Q., Lin, K., et al. (2024). *Proposer-Agent-Evaluator (PAE): Autonomous Skill Discovery For Foundation Model Internet Agents*. arXiv:2412.13194. https://arxiv.org/abs/2412.13194
+3. Yang, C., Su, S., Liu, S., et al. (2025). *ZeroGUI: Automating Online GUI Learning at Zero Human Cost*. arXiv:2505.23762. https://arxiv.org/abs/2505.23762
+4. Sun, Z., Liu, Z., Zang, Y., et al. (2025). *SEAgent: Self-Evolving Computer Use Agent with Autonomous Learning from Experience*. arXiv:2508.04700. https://arxiv.org/abs/2508.04700
+5. Shen, J., Bai, H., Zhang, L., et al. (2025). *Thinking vs. Doing: Agents that Reason by Scaling Test-Time Interaction*. arXiv:2506.07976. https://arxiv.org/abs/2506.07976
+6. Shi, Y., Yu, W., Li, Z., et al. (2025). *MobileGUI-RL: Advancing Mobile GUI Agent through Reinforcement Learning in Online Environment*. arXiv:2507.05720. https://arxiv.org/abs/2507.05720
+7. Xiao, H., Wang, G., Chai, Y., et al. (2025). *UI-Genie: A Self-Improving Approach for Iteratively Boosting MLLM-based Mobile GUI Agents*. arXiv:2505.21496. https://arxiv.org/abs/2505.21496
+8. Xu, Y., Liu, X., Liu, X., et al. (2025). *MobileRL: Online Agentic Reinforcement Learning for Mobile GUI Agents*. arXiv:2509.18119. https://arxiv.org/abs/2509.18119
+9. Zhou, H., Zhang, X., Tong, P., et al. (2025). *MAI-UI Technical Report: Real-World Centric Foundation GUI Agents*. arXiv:2512.22047. https://arxiv.org/abs/2512.22047
+10. Zhang, L., Chen, Y., Zhang, C., et al. (2026). *GSAR: Goal-State-Anchor Rewards for Mobile GUI Agents with Self-Evolving Data Synthesis*. arXiv:2608.22847. https://arxiv.org/abs/2608.22847
+11. Murty, S., Zhu, H., Bahdanau, D., Manning, C. D. (2024). *NNetNav: Unsupervised Learning of Browser Agents Through Environment Interaction in the Wild*. arXiv:2410.02907. https://arxiv.org/abs/2410.02907
+12. Su, H., Sun, R., Yoon, J., et al. (2025). *Learn-by-interact: A Data-Centric Framework for Self-Adaptive Agents in Realistic Environments*. arXiv:2501.10893. https://arxiv.org/abs/2501.10893
+13. Pahuja, V., Lu, Y., Rosset, C., et al. (2025). *Explorer: Scaling Exploration-driven Web Trajectory Synthesis for Multimodal Web Agents*. ACL 2025 Findings; arXiv:2502.11357. https://arxiv.org/abs/2502.11357
+14. Gandhi, A., Neubig, G. (2025). *Go-Browse: Training Web Agents with Structured Exploration*. arXiv:2506.03533. https://arxiv.org/abs/2506.03533
+15. Ramrakhya, R., Szot, A., Attia, O., et al. (2025). *Scaling Synthetic Task Generation for Agents via Exploration* (AutoPlay). arXiv:2509.25047. https://arxiv.org/abs/2509.25047
+16. Ding, L. (2026). *AgentHER: Hindsight Experience Replay for LLM Agent Trajectory Relabeling*. arXiv:2603.21357. https://arxiv.org/abs/2603.21357
+17. Li, Z., Wu, G., Wang, Z., et al. (2026). *Spinning Straw into Gold: Relabeling LLM Agent Trajectories in Hindsight for Successful Demonstrations* (HSL). ICLR 2026; arXiv:2607.04235. https://arxiv.org/abs/2607.04235
+18. Awadallah, A., Lara, Y., Magazine, R., et al. (2025). *Fara-7B: An Efficient Agentic Model for Computer Use* (FaraGen). arXiv:2511.19663. https://arxiv.org/abs/2511.19663
+19. Xie, J., Xu, D., Zhao, X., Song, D. (2025). *AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents*. ICLR 2026; arXiv:2506.14205. https://arxiv.org/abs/2506.14205
+20. Boisvert, L., Thakkar, M., Gasse, M., et al. (2024). *WorkArena++: Towards Compositional Planning and Reasoning-based Common Knowledge Work Tasks*. NeurIPS 2024 (D&B); arXiv:2407.05291. https://arxiv.org/abs/2407.05291
+21. Drouin, A., Gasse, M., Caccia, M., et al. (2024). *WorkArena: How Capable Are Web Agents at Solving Common Knowledge Work Tasks?* ICML 2024; arXiv:2403.07718. https://arxiv.org/abs/2403.07718
+22. Bai, H., Taymanov, A., Zhang, T., Kumar, A., Whitehead, S. (2026). *WebGym: Scaling Training Environments for Visual Web Agents with Realistic Tasks*. arXiv:2601.02439. https://arxiv.org/abs/2601.02439
+23. Aggarwal, P., Neubig, G., Welleck, S. (2026). *Gym-Anything: Turn any Software into an Agent Environment*. arXiv:2604.06126. https://arxiv.org/abs/2604.06126
+24. Rawles, C., Clinckemaillie, S., Chang, Y., et al. (2024). *AndroidWorld: A Dynamic Benchmarking Environment for Autonomous Agents*. arXiv:2405.14573. https://arxiv.org/abs/2405.14573
+25. Xie, T., Zhang, D., Chen, J., et al. (2024). *OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments*. arXiv:2404.07972. https://arxiv.org/abs/2404.07972
+26. XLANG Lab (2025). *Introducing OSWorld-Verified* (blog, Jul 28, 2025). https://xlang.ai/blog/osworld-verified
+27. Yuan, M., Zhou, Z., Xiong, X., et al. (2026). *OSWorld 2.0: Benchmarking Computer Use Agents on Long-Horizon Real-World Tasks*. arXiv:2606.29537. https://arxiv.org/abs/2606.29537
+28. Brand, F., Burnham, G. (2025). *What does OSWorld tell us about AI's ability to use computers?* Epoch AI. https://epoch.ai/blog/what-does-osworld-tell-us-about-ais-ability-to-use-computers
+29. Siu, V., Sharma, M., Song, D., et al. (2026). *ChainWorld: Composing Long-Horizon Desktop Workloads from Atomic OSWorld Tasks*. arXiv:2606.21654. https://arxiv.org/abs/2606.21654
+30. Gan, G., Zhao, Y., Chen, C., et al. (2026). *Are Android GUI Agents Robust Against Runtime Anomalies? AnTrap: Evaluating Agents in Dynamic Adversarial Environments*. arXiv:2608.24099. https://arxiv.org/abs/2608.24099
+31. Wang, B., Lu, D., Wang, J., et al. (2026). *CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents*. arXiv:2605.25624. https://arxiv.org/abs/2605.25624
+32. Lv, B., Liu, X., Ren, Y., et al. (2026). *SCALECUA: Scaling Computer Use Agents with Verifiable Task Synthesis and Efficient Online RL*. arXiv:2607.11185. https://arxiv.org/abs/2607.11185
+33. Liu, Z., Xie, J., Ding, Z., et al. (2025). *ScaleCUA: Scaling Open-Source Computer Use Agents with Cross-Platform Data*. arXiv:2509.15221. https://arxiv.org/abs/2509.15221
+34. Yang, Y., Yang, Z., Dou, Z.-Y., et al. (2025). *UltraCUA: A Foundation Model for Computer Use Agents with Hybrid Action*. arXiv:2510.17790. https://arxiv.org/abs/2510.17790
+35. Xue, T., Peng, C., Huang, M., et al. (2026). *EvoCUA: Evolving Computer Use Agents via Learning from Scalable Synthetic Experience*. arXiv:2601.15876. https://arxiv.org/abs/2601.15876
+36. Wei, J., Ma, Q., Zhao, Y., et al. (2026). *OpenComputer: Verifiable Software Worlds for Computer-Use Agents*. arXiv:2605.19769. https://arxiv.org/abs/2605.19769
+37. Lu, D., Bai, S., Bai, T., et al. (2026). *Qwen-CUA: Native Computer Use for (almost) Everything*. arXiv:2608.02352. https://arxiv.org/abs/2608.02352
+38. Zhou, H., Tong, P., Zhang, X., et al. (2026). *Qwen-UI-Agent Technical Report: Toward Next-Generation Real-World Centric Foundation GUI Agents*. arXiv:2607.28227. https://arxiv.org/abs/2607.28227
+39. Wang, H., Zou, H., Song, H., et al. (2025). *UI-TARS-2 Technical Report: Advancing GUI Agent with Multi-Turn Reinforcement Learning*. arXiv:2509.02544. https://arxiv.org/abs/2509.02544
+40. Cao, Y., Ran, D., Wu, M., et al. (2026). *GUI-GENESIS: Automated Synthesis of Efficient Environments with Verifiable Rewards for GUI Agent Post-Training*. arXiv:2602.14093. https://arxiv.org/abs/2602.14093
+41. Wu, Y., Peng, Y., Chen, Y., et al. (2026). *AutoWebWorld: Synthesizing Infinite Verifiable Web Environments via Finite State Machines*. arXiv:2602.14296. https://arxiv.org/abs/2602.14296
+42. Zhang, C., Cheng, Y., Hu, S., et al. (2026). *Training Needs Trustworthy Worlds: Verified Synthetic Web Environments for Agent Learning*. arXiv:2608.21898. https://arxiv.org/abs/2608.21898
+43. Chae, H., Park, J., Ritter, A. (2026). *Safe and Scalable Web Agent Learning via Recreated Websites* (VeriEnv). arXiv:2603.10505. https://arxiv.org/abs/2603.10505
+44. Zhang, Z., Wang, Z., Zhang, X., et al. (2026). *InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training*. ACL 2026; arXiv:2601.04126. https://arxiv.org/abs/2601.04126
+45. Liu, Y., Lai, X., Li, J., et al. (2026). *PhoneWorld: From Real-App Trajectories to Dynamic and Verifiable Environments for Phone-Use Agents*. arXiv:2605.29486. https://arxiv.org/abs/2605.29486
+46. Bai, S., Deng, J., Fan, S., et al. (2026). *RecreationWorld: Scalable and Verifiable Environments for Hybrid Computer-Use Agents*. arXiv:2609.22000. https://arxiv.org/abs/2609.22000
+47. Shi, C., Wu, Y., Liu, Y., et al. (2026). *Interactive Reward Agent: GUI Task Evaluation via Environment-State Verification*. arXiv:2607.25904. https://arxiv.org/abs/2607.25904
+48. Cui, C., Huang, J., Wang, S., et al. (2026). *Agentic Reward Modeling: Verifying GUI Agent via Progressive Trajectory-Grounded Interaction* (VAGEN). arXiv:2602.00575. https://arxiv.org/abs/2602.00575
+49. Lù, X. H., Kazemnejad, A., Meade, N., et al. (2025). *AgentRewardBench: Evaluating Automatic Evaluations of Web Agent Trajectories*. arXiv:2504.08942. https://arxiv.org/abs/2504.08942
+50. Li, Z., Wu, Z., Zhao, Y., et al. (2026). *OS-Themis: A Scalable Critic Framework for Generalist GUI Rewards*. arXiv:2603.19191. https://arxiv.org/abs/2603.19191
+51. Sumyk, M., Kosovan, O. (2026). *Reinforcement Learning for Computer-Use Agents with Autonomous Evaluation*. GLOW @ IJCAI 2026; arXiv:2606.24515. https://arxiv.org/abs/2606.24515
+52. Sahu, B., Pandey, S. (2026). *Teach it to stop, not just to click*. arXiv:2607.17136. https://arxiv.org/abs/2607.17136
+53. Qin, Z., Chen, J., Man, Y., et al. (2025). *OSGym: Scalable OS Infra for Computer Use Agents*. arXiv:2511.11672. https://arxiv.org/abs/2511.11672
+54. Ye, J., Zhang, X., Xu, H., et al. (2025). *Mobile-Agent-v3: Fundamental Agents for GUI Automation* (GUI-Owl). arXiv:2508.15144. https://arxiv.org/abs/2508.15144
+55. Trabucco, B., Sigurdsson, G., Piramuthu, R., Salakhutdinov, R. (2025). *InSTA: Towards Internet-Scale Training For Agents*. arXiv:2502.06776. https://arxiv.org/abs/2502.06776
+56. Huang, Z., Ju, T., Cheng, P., et al. (2026). *Do GUI Agents Know When Not to Act? Enabling Conflict-Aware Termination for Multimodal GUI Agents* (ConflictGUI). arXiv:2609.03438. https://arxiv.org/abs/2609.03438
+57. Yang, W., Jin, C., Zhu, H., et al. (2026). *Are GUI Agents Focused Enough? Automated Distraction via Semantic-level UI Element Injection*. ECCV 2026; arXiv:2604.07831. https://arxiv.org/abs/2604.07831
+58. Lin, Z., Liu, F., Yang, Y., et al. (2026). *UI-Voyager: A Self-Evolving GUI Agent Learning via Failed Experience*. arXiv:2603.24533. https://arxiv.org/abs/2603.24533
+59. Fan, Z., Zhang, B., Li, Y., et al. (2026). *SEE: Structure-aware Exploring & Exploiting for Long-horizon GUI Agent Trajectory Synthesis*. ACM MM 2026; arXiv:2607.18046. https://arxiv.org/abs/2607.18046
+60. Faisal, F. E., Wu, Q., Peng, B., Gao, J. (2026). *AutoSurfer — Teaching Web Agents through Comprehensive Surfing, Learning, and Modeling*. arXiv:2604.27253. https://arxiv.org/abs/2604.27253
