@@ -1,7 +1,7 @@
 # Pitfalls and failure modes (and how to guard against each)
 
 > **Key takeaways**
-> - **Most "hard" synthetic items that fail are broken, not hard**: unsolvable, ambiguous, mislabeled, or rejected by a faulty verifier. After 5 rounds of constraint addition, IFDecorator had 10,772 unsolvable prompts vs 7,324 usable. Treat every pass-rate-0 item as a bug report until a solvability certificate says otherwise.
+> - **Many "hard" synthetic items that fail are broken, not hard**: unsolvable, ambiguous, mislabeled, or rejected by a faulty verifier. After 5 rounds of constraint addition, IFDecorator had 10,772 unsolvable prompts vs 7,324 usable. Treat every pass-rate-0 item as a bug report until a solvability certificate says otherwise.
 > - **Measure difficulty on the current policy, in the exact training harness, conditional on independent validity.** Constraint counts, length, LLM-rated complexity and "make it harder" prompts are weak proxies; in one controlled RLVR study 64% of rejected mutations were too easy.
 > - **Hardening widens the attack surface, so verifier gaming rises with difficulty** (shortcuts: 40 at complexity levels 1–10 vs 458 at 11–20). Every operator needs a hack audit before RL: read-only or out-of-process grading, invariance checks, trip-wires, trivial-agent baselines.
 > - **Closed loops degrade silently**: pseudo-label accuracy 79% → 63%, ~74% of tasks on one topic, a proposer's valid-question rate falling to 0. Ground labels outside the model, keep real anchors every round, measure novelty against a persistent archive, and stop after ~3 rounds unless a held-out metric is still rising.
@@ -66,7 +66,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Evidence.**
 - **Complexity is not difficulty.** IFDecorator states that "complexity alone does not determine difficulty"; constraint count correlates only loosely with measured difficulty ([IFDecorator, 2025](https://arxiv.org/abs/2508.04632)).
 - **Deep structure is not realized difficulty.** On the same agent, InfoSeek's "deep" trees needed about 20.6 retrieval calls, with the answer first seen at step 5.7. FORT's questions needed 141.0 calls, with the answer first seen at step 46.9 ([FORT](https://arxiv.org/abs/2606.12087)).
-- **Rewriting that ignores the policy hurts.** Evol-Instruct prompts trained worse than unchanged ones (50.24 vs 50.51; [LLM-as-a-Tutor](https://arxiv.org/abs/2607.04412)); "complex question" augmentation cut BIRD-dev 64.9 → 62.5 ([Arctic](https://arxiv.org/abs/2505.20315)); text-only hardening rewrites did not beat untouched descriptions at fixed size ([OpenThoughts-Agent](https://arxiv.org/abs/2606.24855)).
+- **Rewriting that ignores the policy hurts.** Evol-Instruct prompts trained worse than unchanged ones (50.24 vs 50.51; [LLM-as-a-Tutor](https://arxiv.org/abs/2607.04412)); unfiltered "complex question" augmentation cut BIRD-dev 64.9 → 62.5 ([Arctic](https://arxiv.org/abs/2505.20315)); text-only hardening rewrites did not beat untouched descriptions at fixed size ([OpenThoughts-Agent](https://arxiv.org/abs/2606.24855)).
 - **Asking for "hard" yields easy survivors.** 64% of rejected mutations were too easy ([Trading Human Curation](https://arxiv.org/abs/2606.03800)); "Hard" proposals overlapped heavily with "Easy" ones ([PSV](https://arxiv.org/abs/2512.18160)); generation success fell to 11% while evaluation success stayed at 48% ([AgentSynth](https://arxiv.org/abs/2506.14205)).
 - **"Validates" is not "learnable."** 81% of validated candidates did not separate strong from weak solvers, mostly because both passed ([CalibForge](https://arxiv.org/abs/2608.06352)).
 - **The harness changes difficulty.** A 4B model went from 8.3% to 37.2% just by changing harness ([FrogNano](https://arxiv.org/abs/2609.07925)).
@@ -92,7 +92,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
   - Lowering OpenSIR's solve-rate floor from 0.5 to 0.1 cut validity from 70.8% to 42.3% and math accuracy from 29.6 to 26.0, while GPT-5's solve rate only moved from 89.8% to 78.3% ([OpenSIR](https://arxiv.org/abs/2511.00602)).
 - **Knobs create impossible instances.** River Crossing with boat capacity 3 has no solution for N ≥ 6 ([Lawsen](https://arxiv.org/abs/2506.09250)); 11–23% of initial LLM-built puzzles were unsolvable ([AutoLogi](https://arxiv.org/abs/2502.16906)); environments at <3% accuracy mostly had semantic errors ([InternBootcamp](https://arxiv.org/abs/2508.08636)).
 - **Some hard items do damage.** Hard@8 items (pass@8 = 0) lowered averages by 5.75, 11.24 and 1.07 points in three settings, and one sample whose reward accepted a bare boxed answer collapsed mean length from 510.7 to 45.7 tokens within 58 steps ([2605.28388](https://arxiv.org/abs/2605.28388)). 1–3 buggy task types out of 50 collapsed training ([UltraLogic](https://arxiv.org/abs/2601.03205)).
-- **Band control beats "harder".** Easy-only data scored 29, hard-only 24, unscheduled 38 and controller-scheduled 44 ([InternGeometry](https://arxiv.org/abs/2512.10534)).
+- **Band control beats "harder".** On IMO-50, easy-only data scored 29, hard-only 24, the same data unscheduled 38 and controller-scheduled 44 ([InternGeometry](https://arxiv.org/abs/2512.10534)).
 - **Small-k p = 0 is also misfiled the other way.** 10.3–22.9% of pass@6 = 0 math items were reachable with perturbed deterministic decoding ([Hard or Just Unreached?](https://arxiv.org/abs/2606.19636)).
 
 **Detect.**
@@ -116,7 +116,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Root cause.** Obfuscation, clue removal, spec degradation and distractor insertion delete the information that made the answer unique, or add a second valid answer; "keep what strong models fail" filters then *enrich* such items.
 
 **Evidence.**
-- **Adversarial selection enriches bad items.** HLE reports 15.4% expert disagreement on its public set, and HLE-Verified kept only 668 of 2,500 items unchanged ([HLE-Verified](https://arxiv.org/abs/2602.13964)).
+- **Adversarial selection enriches bad items.** HLE reports 15.4% expert disagreement on its public set ([HLE](https://arxiv.org/abs/2501.14249)), and HLE-Verified kept only 668 of 2,500 items unchanged ([HLE-Verified](https://arxiv.org/abs/2602.13964)).
 - **Filters based only on model failure keep broken items.** Keeping items that GPT-4o with search failed 4 of 4 times also keeps broken, ambiguous and unanswerable ones ([DeepDive](https://arxiv.org/abs/2509.10446)).
 - **Adding candidates adds second answers.**
   - Option expansion produced 1,953 correct-but-labelled-wrong options in MMLU-Pro's MMLU part ([MMLU-Pro](https://arxiv.org/abs/2406.01574)).
