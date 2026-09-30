@@ -46,11 +46,11 @@ This chapter turns the report into build items and does not repeat the backgroun
 
 ```
 verified seed ──► operator(s) ──► candidate task bundle
-                                     │ G0 contract: oracle passes, no-op fails, known-bad fails  (§7 F1)
-                                     │ G1 two-sided gate: solvable with privileged info, not without (F4)
-                                     │ G2 shortcut probes: no-CoT / no-context / tool-free / trivial agent (A4)
-                                     │ G3 pilot band on the CURRENT policy: keep 0<p<1, aim ≈0.3–0.6 (G4)
-                                     │ G4 dedup + skill-level signature, lineage log, per-operator yield (I3, I4)
+                                     │ [0] contract: oracle passes, no-op fails, known-bad fails  (§7 F1)
+                                     │ [1] two-sided gate: solvable with privileged info, not without (F4)
+                                     │ [2] shortcut probes: no-CoT / no-context / tool-free / trivial agent (A4)
+                                     │ [3] pilot band on the CURRENT policy: keep 0<p<1, aim ≈0.3–0.6 (G4)
+                                     │ [4] dedup + skill-level signature, lineage log, per-operator yield (I3, I4)
                                      ▼
                       accepted ──► pool (+20–33% real anchors, 2–10% easy replay) ──► RL / SFT
                       rejected ──► reason logged: too easy | broken | ambiguous | hackable | duplicate
@@ -742,7 +742,7 @@ All eight ideas are `Novel` with **Proposal** evidence. Each is paired with the 
 - **Confidence (C):** Strong = 5, Moderate = 4, Emerging = 3, Proposal = 2.
 - **Effort (E):** S = 1, M = 2, L = 4.
 
-The formula favors cheap, label-preserving work by design. The highest-*impact* items are G1, D1 and B1.
+The formula favors cheap, label-preserving work by design. The highest-*impact* items (I = 5) are G1 and D1, followed by B1.
 
 | # | Idea | Status | Evidence | I | C | E | Score | First deliverable |
 |---|---|---|---|---|---|---|---|---|
