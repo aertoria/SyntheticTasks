@@ -2,7 +2,7 @@
 
 A citation-verified research report, current to **2026-09-30**, on one question: *our SFT/RL tasks are too easy (pass rates near 100%, no GRPO signal). How do we synthetically generate complicated tasks from easy ones, with correct answers and verifiers, at scale?*
 
-**Start with the [executive summary](report/00-executive-summary.md).** For comments, a Google Docs copy of every chapter is in the review folder on Google Drive, which is private to its owner.
+**Start with the [executive summary](report/00-executive-summary.md)**, or read everything condensed into one document in the [comprehensive overview](report/comprehensive-overview.md). For comments, a Google Docs copy of every chapter is in the review folder on Google Drive, which is private to its owner.
 
 ## The answer in brief
 
