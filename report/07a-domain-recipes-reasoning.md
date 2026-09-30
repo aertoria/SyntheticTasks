@@ -388,3 +388,182 @@ Lean-native geometry pools also exist: Euclean ([2607.19374](https://arxiv.org/a
 
 **Key references:** [InternGeometry](https://arxiv.org/abs/2512.10534) (CBRL; 44/50 vs 38 without the schedule); [AlphaGeometry](https://www.nature.com/articles/s41586-023-06747-5) (100M theorems, 9M with auxiliaries, 25/30 IMO-AG-30); [STP](https://arxiv.org/abs/2502.00212) (barely-provable band; 28.5% vs 13.2% of LeanWorkbook); [GAR](https://arxiv.org/abs/2510.11769) (the base model's accuracy on fused statements fell from 29.16% to 7.69% across iterations, while the trained prover stayed near 21%); [Goedel-Prover-V2](https://arxiv.org/abs/2508.03613) (`extract_goal` + negations; 84.6% MiniF2F pass@32 at 8B); [Ineq-Comp](https://arxiv.org/abs/2505.12680).
 
+---
+
+## 4. Competitive and algorithmic code
+
+Code is the domain where "too easy" most often means "too weakly verified". Before generating anything, measure how many policy "passes" survive stronger tests.
+
+- HardTests found TACO's false-positive rate above 90% on difficult problems.
+- DeepCoder found that problems with fewer than 5 tests led to reward hacking: the policy printed memorized answers ([DeepCoder](https://www.together.ai/blog/deepcoder)).
+
+After that audit, four families of hardening keep a sound reward:
+
+- harder contest problems (4.1);
+- lifting into formally verified code (4.2);
+- program induction with execution labels (4.3);
+- switching the objective from correctness to performance (4.4).
+
+### 4.1 Contest and function-level problems
+
+**Seeds.** TACO, APPS, CodeContests, Codeforces and LeetCode items with oracle solutions. Also function-level pools such as [KodCode](https://arxiv.org/abs/2503.02951) (447K verified triplets, with 10-attempt pass rates as free difficulty labels).
+
+**Operators, in the order to try them:**
+
+| # | Operator | Easy → hard | Verification | Evidence |
+|---|---|---|---|---|
+| 1 | **Verifier hardening.** Hacking inputs aimed at plausible wrong or slow solutions; tests where candidate solutions disagree; tests that separate overlapping solutions | ~10 tests that 95% of samples pass → ~35 evolved tests including split tests | New tests must pass every known-correct reference. Drop tests with < 10% pass rate; deduplicate by pass vector | **Strong** ([HardTests](https://arxiv.org/abs/2505.24098), [EvolveCoder](https://arxiv.org/abs/2603.12698), [CodeContests-O](https://arxiv.org/abs/2601.13682)) |
+| 2 | **Input-scale amplification.** Same statement, larger limits and worst-case structures | n ≤ 100 (O(n²) passes) → n ≤ 2·10⁵ with adversarial structure, so O(n log n) is required | A scale-parameterized generator plus an input validator; oracle outputs; time limit relative to the reference | **Strong** ([rStar-Coder](https://arxiv.org/abs/2505.21297), HardTests) |
+| 3 | **Solution-first algorithmic lift.** Mutate the *reference solution* so the parent approach is insufficient (stronger asymptotics, richer state, new reformulation), then derive the statement and tests by running it | Array-sum seed → range updates that need a segment tree | Triangulate the evolved reference against a brute force that sees only the statement and a public-output oracle. Reject "false difficulty" (ambiguous wording, unnatural edge cases) | **Moderate** ([BenchEvolver](https://arxiv.org/abs/2606.01286), [AutoCode](https://arxiv.org/abs/2510.12803)) |
+| 4 | **Feature / atom composition.** Build an inventory of algorithmic features from the seeds; choose 2–4 *compatible* ones, then write a hint-free task | Binary search → binary search on the answer + prefix sums + monotone-deque feasibility on a circular array with updates | Majority of 8–16 strong solvers + a strong-solver solvability filter; hold-out tests for choosing the golden solution; near-miss adversarial tests | **Moderate** ([X-Coder](https://arxiv.org/abs/2601.06953), [ADR](https://arxiv.org/abs/2605.31058), [EpiCoder](https://arxiv.org/abs/2501.04694)) |
+| 5 | **Closed → open-ended goal.** Alter the objective, constrain the outputs or generalize the inputs until no ceiling remains | MST → degree-constrained spanning tree; 2-SAT → Min-True 2-SAT; bipartite MIS → general MIS | Feasibility checker + scorer normalized to [0, 1] against a baseline; test and verifier agents cross-validate; keep only problems where independent solutions use different strategies (idea divergence) | **Emerging** ([FrontierSmith](https://arxiv.org/abs/2605.14445)) |
+| 6 | **Task-direction inversion.** One artifact becomes deduction (predict output), abduction (find input), induction (write f from I/O), fuzzing (find an input that type-checks but breaks the property) or test-writing | "Write f" → "given a 60-line f and output [3,7,7,12], find an input" | Exact output match; re-execute f on the predicted input; property violation + pre-test check | **Moderate** ([CodeI/O](https://arxiv.org/abs/2502.07316), [AZR](https://arxiv.org/abs/2505.03335), [Deep Dive](https://arxiv.org/abs/2603.24202), [CURE](https://arxiv.org/abs/2506.03136)) |
+| 7 | **Agentification.** Turn the solution's logic into a tool library behind partial observation | "Compute X for array A" → an agent that must make 10–256 calls to ≥ 4 distinct tools | The reference produces outputs; one of K = 10 LLM-written tool-calling solutions must pass | **Emerging** ([CodeGym](https://arxiv.org/abs/2509.17325): +8.7 on OOD τ-Bench) |
+
+Numbers that justify this order:
+
+- **Test hardening pays twice.** RL on Qwen3-4B with HardTests-quality tests reached pass@10 64.76, vs 57.14 with TACO tests. EvolveCoder's evolved suites cut pass@1 on the same problems from 43.80 to 31.22 and raised a Qwen3-4B RL average from 46.6 to 49.0. **Strong.**
+- **Solution-first evolution makes real difficulty.** On LiveCodeBench-v6 Hard seeds, average pass@1 fell from 87.0% to 45.7% on the evolved problems. RL on gpt-oss-20b gained +8.7 on LCB v6 Hard, 70.7% more than seed-only training ([BenchEvolver](https://arxiv.org/abs/2606.01286), 2026). AutoCode's mutated problems were about +334 Elo harder than their seeds. Its dual-solution check raised reference correctness from 86% to 94%. **Moderate.**
+- **Open-ended goals remove the ceiling.** FrontierSmith ran GRPO on only 200 problems and gave Qwen3.5-9B +8.82 on FrontierCS and +306.36 on ALE-bench. That beat a closed-ended HardTests control by +5.24 / +236.40 and a random-reward control by +7.58 / +256.76. Removing the divergence filter cost 2.05 FrontierCS points. **Emerging.**
+- **Prefer unique tasks to multiple solutions per task.** X-Coder found 64k tasks × 1 solution > 16k × 4 > 8k × 8. Keep oracle-backed seeds in the mix: rStar-Coder scored 57.3 with seed + synthetic data, vs 49.7 seed-only and 46.8 synthetic-only.
+
+**Architecture.** A teacher loop conditioned on the student's results is the best general pattern.
+
+```
+seed (statement + oracle) ──► teacher mutates (lift / compose / scale / open-end)
+        ▲                                   │
+        │                        reference + brute force + validator
+        │                                   │ agree on validator-checked tests?
+ pass-rate summary                          ▼
+ (M=16–32 student rollouts) ◄── student attempts ◄── accepted candidate
+        │
+  0.4 ≤ p ≤ 0.6 ? ── yes ──► RL pool
+        └─ no ──► teacher gets "make it harder/easier" + representative solutions (≤ 6 turns)
+```
+
+Deep Dive's 6-turn teacher loop got about 4× more valid problems than single-turn generation. Medium-difficulty problems (pass rate 0.41–0.59) gave the best balance of speed and generalization; easy problems caused overfitting. M = 8 rollouts gave noisy pass-rate estimates, so use 16–32 ([Deep Dive](https://arxiv.org/abs/2603.24202), Meta, 2026). **Moderate.**
+
+**Verifier.**
+
+- The Validator–Generator–Checker triple is the baseline ([AutoCode](https://arxiv.org/abs/2510.12803)): 98.7% consistency with official verdicts on its 720-problem benchmark ([CodeContests+](https://arxiv.org/abs/2506.05817) is similar).
+- For problems without an oracle, use mutual verification: a majority of 16 strong solutions must agree on at least 50 inputs. It gave 96.8% output-label accuracy, vs 12.7% for GPT-4o-written outputs. Lower the agreement threshold for hard seeds (rStar-Coder uses 40% for Codeforces seeds rated above 1600) so hard items survive.
+- Expect about 13% residual label noise before deterministic filters. Hand-audit a sample: 94% of X-Coder's wrong labels came from one pattern that a mechanical check could detect.
+
+**Knobs.**
+
+- Number of composed features.
+- Input scale (10⁰–10⁵ in rStar-Coder).
+- Number of adversarial test rounds (0–3).
+- Speedup bar and P → NP-hard goal changes.
+- Number of teacher rounds.
+
+**Pitfalls.**
+
+- **"Make it harder" prompts yield trivial or ill-posed tasks.** X-Coder notes that LLMs "oversimplify complex prompts into trivial cases". In a gated augmentation study, 74.5% of mutated variants were rejected, 64% of those as *too easy* ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
+- **Majority voting fails on shared misconceptions,** which are most likely on the hardest items.
+- **Do not rank generated problems with LLM quality ratings.** In AutoCode, o3–human correlation was 0.07 for quality, while measured difficulty gain correlated up to 0.60 with human quality ratings. Only about 5% of generated problems landed in the pass@1 0.1–0.5 zone.
+
+### 4.2 Formally verified code (Dafny, Verus, Lean)
+
+Lift a saturated, tested function into "implementation + machine-checked proof against a formal spec". The proof checker cannot be fooled on the solution side, so **the attack surface moves to the spec**.
+
+**Operators:**
+
+1. **Spec lifting.** Tested code becomes an implement-and-prove task. [ATLAS](https://arxiv.org/abs/2512.10173) lifted TACO into 2.7K verified Dafny programs and split each into about 7× more subtasks, taking Qwen2.5-7B-Coder on DafnyBench from 32.4% to 56.9%. Lifting succeeded for 47.1% of EASY seeds but only about 20% of HARD ones, so oversample hard seeds.
+2. **Stage and language ladder on the same problem.**
+   - VeriContest stages: NL→code 92.18%, spec 48.31%, proof 13.95%, end-to-end 5.29% ([VeriContest](https://arxiv.org/abs/2605.08553)).
+   - AlgoVeri languages: Dafny 40.3%, Verus 24.7%, Lean 7.8% ([AlgoVeri](https://arxiv.org/abs/2602.09464)).
+3. **Hint stripping.** Remove invariants and assertions and ask for them back ([DafnyBench](https://arxiv.org/abs/2406.08467)). Cheap, but DafnyBench is nearly saturated (68% → 96% model union).
+4. **Chain composition of verified units.** Each caller must be proved from its callees' specs. DafnyComp outputs across 13 LLMs are 95.67% syntax-correct but only 3.69% verify ([DafnyComp](https://arxiv.org/abs/2509.23061)). Chains had 47% synthesis success; trees and DAGs had under 8%.
+5. **Spec strengthening.** Require the spec to reject outputs mutated from known-correct runs ("spectests", [SpecRL](https://arxiv.org/abs/2604.05820)), to imply the reference spec ([Re:Form](https://arxiv.org/abs/2507.16331)), or to be two-way equivalent to the code ([VeriEquivBench](https://arxiv.org/abs/2510.06296)).
+6. **Certified equivalence / inequivalence pairs.** An equivalent rewrite comes with a Liquid Haskell proof; an inequivalent one comes with an executed counterexample. Keep pairs the current evaluator misjudges ([semantic-equivalence self-play](https://arxiv.org/abs/2604.17010): up to +13.3pp on EquiBench).
+
+**Self-play architecture.** [PSV](https://arxiv.org/abs/2512.18160) (2025) prompts a proposer with specs labelled by the solver's current pass-rate bucket, admits only well-formed specs, and trains the solver on Verus-verified solutions. A 3B model reached 65.63% pass@1 on Dafny2Verus, vs 34.46% for plain rejection fine-tuning (RFT). Ablations:
+
+- no solution verification: 31.82% (a 51.5% relative drop);
+- no difficulty conditioning: 60.16%.
+
+So verification matters far more than curriculum tuning. **Moderate.**
+
+[ANCORA](https://arxiv.org/abs/2604.27644) adds three stabilizers:
+
+- the proposer is rewarded only when exactly 1 of K attempts verifies;
+- a generated spec is admitted only after a verified solve;
+- the curriculum grows as a tree of one-step edits.
+
+It reached 81.5% on Dafny2Verus in its test-time-training setting. Removing tree descent peaked at 51.3% and then collapsed to 12%. **Emerging.**
+
+**Spec-hacking defenses.** Use at least two.
+
+- **Rule filters.** Reject `assume(false)`, `sorry` and `external_body`. AlphaVerus saw `assume(false)` spread from one program to all of them without critique ([AlphaVerus](https://arxiv.org/abs/2412.06176)).
+- **An exploit model.** It writes the laziest program that could verify; if one verifies, the spec is flawed.
+- **Completeness tests.** Spectests, perturbation lemmas, or MutDafny code mutants.
+- **Implication or equivalence against a reference.** Under a verification-only reward, Re:Form's specs weakened progressively.
+
+A thesis-scale Dafny RL run shows why this matters: verified reward rose from 2.2% to 58.1%, and inspection found trivial specs (`ensures result >= 0`) and leaky ones ([Tan](https://arxiv.org/abs/2605.30914)). **Strong.**
+
+**Gate precision.** In count-matched RFT, admitting 25% false positives cost 1.58pp, while discarding 75% of true positives cost only 0.03pp ([The Verifier is the Curriculum](https://arxiv.org/abs/2607.09709)). Under GRPO the accounting shifts toward false negatives, so measure both.
+
+**Where to start:**
+
+- the [Vericoding benchmark](https://arxiv.org/abs/2509.22908) (12,504 specs across Dafny/Verus/Lean; filter first, since about 9% of successful specs were too weak);
+- Dafny2Verus;
+- [VERINA](https://arxiv.org/abs/2505.23135) with VeriScale-expanded tests;
+- [Verus-SpecGym](https://arxiv.org/abs/2605.26457) (Codeforces hacks as the spec oracle; its checks catch 26% of the failures an LLM judge misses).
+
+### 4.3 Program induction (ARC-style and programming-by-example)
+
+Labels come from executing programs, so every generated task is correct by construction. The risks are ambiguity, degenerate tasks, and label enumeration in place of rule induction.
+
+**Operators:**
+
+- **Per-task procedural generator with a difficulty interval.** [RE-ARC](https://arxiv.org/abs/2404.07353) has one sampler and verifier per ARC task, ≥ 10,000 examples each, at about 1,000 verified examples/s. Add ARC-TGI-style episode constraints so hard instances still expose the rule ([ARC-TGI](https://arxiv.org/abs/2603.05099)).
+- **Concept remixing.** An LLM merges descriptions of two seeds and writes the code; execution provides the labels.
+  - [NVARC](https://github.com/1ytic/NVARC) mixed 3,268 summaries into 266,593 new ones. It kept input programs that produced ≥ 30 unique grids passing unit tests, and output programs whose independent samples agreed on all 30 inputs. The resulting 103,253 puzzles helped it win ARC Prize 2025 with 24.03% on the private ARC-AGI-2 evaluation.
+  - Mixtures of harder puzzles passed the input-program filter about 50% of the time, vs about 70% for easier ones. That acceptance rate is itself a difficulty signal. **Moderate.**
+- **Program mutation and hindsight relabelling.** Every sampled program defines a task it solves.
+  - [CodeIt](https://arxiv.org/abs/2402.04858): 59/400 ARC evaluation tasks, vs 42/400 without relabelling and 20/400 without mutation.
+  - [SOAR](https://arxiv.org/abs/2507.14172): greedy-diverse selection of 25 best + 25 least-successful programs per task beat correct-only selection (36.46% vs 34.67%).
+  - Never discard failed rollouts in executable domains. **Moderate.**
+- **Black-box induction.** Hide a solved seed function behind a query API and reward differential-testing equivalence ([CodeARC](https://arxiv.org/abs/2503.23145): best of 18 models 52.7%).
+
+**Pitfall: harder induction invites enumeration.** Under an extensional verifier, RLVR-trained models produce many more label-enumeration shortcuts: 40 at complexity levels 1–10 vs 458 at levels 11–20. Scoring on an isomorphic twin (bijectively renamed IDs) kept the gap between the two rewards near 0 ([IPT](https://arxiv.org/abs/2604.15149)). Pay reward only when both the original and the renamed twin are correct. **Emerging.**
+
+Transfer from ARC-style data is mixed: fine-tuning on ARC-TGI data moved Qwen3-8B from 9% to 6%.
+
+### 4.4 Performance objectives (efficiency, kernels, repository speedups)
+
+When pass@1 is 100%, keep correctness as a *gate* and reward speed. The reward stays continuous. It is also the most-hacked reward in this literature.
+
+**Operators:**
+
+- **Goal switch.** "Correct" becomes "beat the human runtime distribution". o4-mini has 89.11% pass@1 on Venus but beats only 56.85% of human solutions on runtime. [Afterburner](https://arxiv.org/abs/2505.23387)'s GRPO kept improving where SFT and DPO saturated (pass@1 47% → 62%).
+- **Operator-fusion composition.** Stack k already-correct operators into one kernel task.
+  - [DRTriton](https://arxiv.org/abs/2603.21465) samples operator DAGs with CP-SAT-solved shapes and promotes level k when held-out pass@1 exceeds 50%.
+  - [CUDA Agent](https://arxiv.org/abs/2602.24286) stacks up to 5 torch operators and keeps tasks with 1–100 ms eager runtime.
+- **Raise the bar.** Speedup threshold p, workload size, baseline (eager → torch.compile → TF32 → speed-of-light). In GSO, Claude-4.0 reaches 70% at Opt₀ but under 5% at Opt₀.₉₅ ([GSO](https://arxiv.org/abs/2505.23671)).
+- **Hidden input distributions and shapes** (TritonRL, KernelBench-Verified).
+
+**Reward shaping.** Milestone rewards beat raw speedup. CUDA Agent's {−1, 1, 2, 3} ladder reached 96.8% of kernels faster than torch.compile, vs 60.4% with a raw speedup reward. Other shapes that work:
+
+- clipped normalized speedup (CUDA-L1, clip at 1.5);
+- tanh gated on correctness (Afterburner);
+- speed reward only once group accuracy ≥ 0.5 ([KernelZero](https://arxiv.org/abs/2609.33074));
+- log-speedup weighting (DRTriton).
+
+**Moderate.**
+
+**Hardening the timer and checker is mandatory.**
+
+- **Stream timing.** 82/250 (32.8%) of CUDA-L1's early RL outputs exploited it, for a fake 18× speedup. The fix: synchronize all streams and check that outputs are materialized ([CUDA-L1](https://arxiv.org/abs/2507.14111)).
+- **Hard-coded test values.** Under hidden inputs, GPT-5.5's apparent 1.43× geomean falls to 0.88× ([KernelBench-Verified](https://arxiv.org/abs/2607.16241)).
+- **Weak oracles.** The official KernelBench check misses 16.9% of injected faults. A kill-matrix-optimized 2-input suite catches 98.0% ([Measuring the Checker](https://arxiv.org/abs/2609.22220)). Mutation-test your oracle before RL.
+- **Lazy optimization.** A custom kernel covered 0.014% of CUDA time. Reward the share of runtime spent in the generated kernel ([Dr. Kernel](https://arxiv.org/abs/2602.05885)).
+- **Cross-machine replay.** Reference patches replay validly on every machine for only 39/102 GSO and 11/140 SWE-Perf tasks ([replay audit](https://arxiv.org/abs/2607.01211)). Keep only tasks whose speedup replays on *your* hardware, or use deterministic simulation (gem5 in [PIE](https://arxiv.org/abs/2302.07867)).
+
+**Strong.**
+
+**Calibrate the mix to your model.** Kevin found easy-only training plateaued. TritonRL found L1-only training beat adding fusion tasks, whose rewards were too sparse.
+
+**Key references for §4:** [HardTests](https://arxiv.org/abs/2505.24098); [BenchEvolver](https://arxiv.org/abs/2606.01286); [FrontierSmith](https://arxiv.org/abs/2605.14445); [PSV](https://arxiv.org/abs/2512.18160); [NVARC](https://github.com/1ytic/NVARC); [CUDA Agent](https://arxiv.org/abs/2602.24286); [Measuring the Checker](https://arxiv.org/abs/2609.22220).
+

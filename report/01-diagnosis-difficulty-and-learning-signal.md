@@ -192,3 +192,104 @@ def diagnose_pool(pool, policy, verifier, harness, k=16):
 ```
 
 ---
+## 3. Difficulty as a policy-relative quantity
+
+"Difficulty" in this report means the success probability p(x; π, V, B) of task x under policy π, verifier V and budget B (tokens, turns, tools). Change any one of the four and p changes: a stronger checkpoint raises it, a stricter verifier lowers it (§2.3), a larger harness budget can raise it several-fold (§2.6). Human difficulty labels (AoPS level, Codeforces rating) and LLM ratings are only priors for p (§6.4).
+
+### 3.1 Pass-rate bands reported across papers
+
+The table groups every explicit band in the notes by what the band controls. k is the number of rollouts used to estimate p.
+
+**(a) Offline or online selection filters on existing prompts**
+
+| Source | k | Rule |
+|---|---|---|
+| [Qwen2.5-Math](https://arxiv.org/abs/2409.12122) | 8 | keep 2–5 of 8 correct |
+| [Olmo 3](https://arxiv.org/abs/2512.13961) | 8 | drop p > 62.5% (initial checkpoint, T = 1.0); 32B fills batches with non-zero-gradient groups only |
+| [Llama-Nemotron](https://arxiv.org/abs/2505.00949) | 8 | drop p ≥ 0.75; Gaussian batches whose mean moves from easy to hard |
+| [MiniMax-M1](https://arxiv.org/abs/2506.13585) | 10 | keep 0 < p < 0.9 (strong reasoning model's pass@10) |
+| [MiMo](https://arxiv.org/abs/2505.07608) | 16 | drop p > 90% (removed about 50% of math); resample an easy pool 10% of the time |
+| [Skywork-OR1](https://arxiv.org/abs/2505.22312) | — | drop p ∈ {0, 1} offline; drop items solved at p = 1 in the previous stage |
+| [POLARIS](https://hkunlp.github.io/blog/2025/Polaris/) | 8 | drop perfectly solved; drop p > 0.9 after each phase ("mirrored-J" distribution) |
+| [AceReason-Nemotron](https://arxiv.org/abs/2505.16400) | 16 | later stages keep p ≤ 6/16 |
+| [rStar2-Agent](https://arxiv.org/abs/2508.20722) | 8 | before stage 3, drop 8/8 on the *original* 42K set → 17.3K |
+| [Kimi k1.5](https://arxiv.org/abs/2501.12599) | 10 | sample ∝ (1 − success); drop if a no-CoT guess is right within 8 tries |
+| [Nemotron-Cascade 2](https://arxiv.org/abs/2603.19220) | 8/16 | drop if GPT-OSS-120B solves 8/8; keep 10% of 0-pass SWE items; mask groups with no reward > 0.5 |
+| [INTELLECT-3](https://arxiv.org/abs/2512.16144) | 8–16 | easy/normal/hard pools by observed solve rate; never resample p = 1 |
+| [Goedel-Prover-V2](https://arxiv.org/abs/2508.03613) | — | drop p = 0 or p > 0.75 |
+| [InternBootcamp](https://arxiv.org/abs/2508.08636) | — | keep 3–85% accuracy |
+| [DAPO](https://arxiv.org/abs/2503.14476) | G | drop groups with accuracy exactly 0 or 1, oversample to refill |
+| [Bae et al.](https://arxiv.org/abs/2504.03380) | 16 | balanced band symmetric about 0.5; (0.3, 0.7) best |
+| [LILO](https://arxiv.org/abs/2502.12272) | 8 | top-\|B\| of a 4\|B\| pool by p̂(1 − p̂) |
+| [ScaleRL](https://arxiv.org/abs/2510.13786) | 16 | drop zero-variance groups; permanently retire p ≥ 0.9 |
+| [Prompt Replay](https://arxiv.org/abs/2603.21177) | 16 | replay p ∈ [0.25, 0.75], priority by closeness to 0.5 |
+| [Pilot-Commit](https://arxiv.org/abs/2605.26606) | 16 pilot | skip p̂ > 0.75, defer p̂ < 0.125, commit 48 more rollouts to the rest |
+| [Trading Human Curation](https://arxiv.org/abs/2606.03800) | 16 | admit variants with pass@8 ∈ [0.05, 0.95] |
+
+**(b) Generator rewards and admission gates for newly synthesized tasks**
+
+| Source | k | Rule |
+|---|---|---|
+| [R-Zero](https://arxiv.org/abs/2508.05004) | 10 | challenger reward 1 − 2\|p̂ − 0.5\|; train on items with 3–7 of 10 agreeing |
+| [Agent0](https://arxiv.org/abs/2511.16043) | 10 | train within \|p̂ − 0.5\| ≤ 0.25 |
+| [OpenSIR](https://arxiv.org/abs/2511.00602) | — | triangular solvability window, floor 0.5 and ceiling 0.9 |
+| [SPICE](https://arxiv.org/abs/2510.24684) / [Socratic-Zero](https://arxiv.org/abs/2509.24726) | 8 | Gaussian reward peaking at 50% (Socratic-Zero σ = 0.2) |
+| [SvS](https://arxiv.org/abs/2508.14029) | 8 | seeds at 12.5–50%; variants rewarded only in [12.5%, 62.5%] |
+| [SwS](https://arxiv.org/abs/2506.08989) | — | keep [25%, 75%] (about 35% of generated problems survive) |
+| [GASP](https://arxiv.org/abs/2603.15957) | — | easier "lemma" at p ∈ [0.3, 0.7], harder "lift" at p ∈ [0.1, 0.5] |
+| [PROPEL](https://arxiv.org/abs/2606.18284) | 8 / 3 | 1/8 ≤ p ≤ 3/8 (math, code); 1/3–2/3 (SWE) |
+| [AZR](https://arxiv.org/abs/2505.03335) | G | proposer reward 1 − r̄, and 0 when r̄ = 0 |
+| [EvoEnv](https://arxiv.org/abs/2605.14392) | 8 | admit 0 < p < 1, target 0.3 |
+| [SQL-Zero](https://arxiv.org/abs/2609.04697) | 5 | difficulty reward peaks at 1 correct of 5 |
+| [IFDecorator](https://arxiv.org/abs/2601.03205) (note 08) | 8 | keep (0, 0.5]; evolve prompts above 0.5; regenerate prompts at 0 |
+| [QuestA](https://arxiv.org/abs/2507.13266) | 8 | keep hinted prompts at 0–4 of 8 |
+
+**(c) Promotion, graduation and "edge" definitions**
+
+| Source | Rule |
+|---|---|
+| [RLVE](https://arxiv.org/abs/2511.07317) | raise an environment's difficulty level when accuracy ≥ 0.9 at the top level (window of 4 levels) |
+| [Cog-DRIFT](https://arxiv.org/abs/2604.04767) / [ZPPO](https://arxiv.org/abs/2606.18216) | promote or graduate an item at accuracy ≥ 0.5 |
+| [Failure-prefix conditioning](https://arxiv.org/abs/2601.20829) | choose prefix length so accuracy ≈ 0.5 (τ = 0.25–0.75 gave 44.2–43.9 vs 44.5 at 0.5) |
+| [UltraLogic](https://arxiv.org/abs/2601.03205) | best training when success, minus about 0.1 for formatting, is 40–60% |
+| [Knapsack RL](https://arxiv.org/abs/2509.25849) | information-gain proxy peaks at p = 1/3 |
+| [Deep Dive](https://arxiv.org/abs/2603.24202) | medium (0.41–0.59 over 32 attempts) trained best; easy items overfit |
+| [Interplay](https://arxiv.org/abs/2512.07783) | "edge": low pass@1 but pass@128 > 0 |
+| [GLM-4.5](https://arxiv.org/abs/2508.06471) | stage-2 tier: pass@8 = 0 and pass@512 ≫ 0, verified-answer pool only |
+| [DeepSeek-V3.2](https://arxiv.org/abs/2512.02556) | keep synthesized agent tasks with pass@100 > 0 |
+| [GLM-5](https://arxiv.org/abs/2602.15763) | failed or rarely solved by the previous model, solvable by stronger teachers |
+
+*Correction note: the IFDecorator row's link should point to note 08's source; see note 08 for the exact reference.*
+
+### 3.2 Reading the bands
+
+- **The centre is 0.3–0.6, with a slight lean to the hard side.** p(1 − p)² peaks at 1/3; EvoEnv targets 0.3 because near-half environments saturate quickly as the solver improves; UltraLogic's sweet spot was 40–60%; Deep Dive's best tier was 0.41–0.59. **Strong.**
+- **The best band depends on model size.** In UltraLogic, Qwen3-8B gained most from Easy data and Qwen3-14B from Medium. Calibrate on the model you train, not a proxy (POLARIS profiles with "the specific model being trained"; INTELLECT-3's 4B proxy is cheaper but less faithful). **Moderate.**
+- **The exact reward curve inside the band is second order.** SSR's consistency-only ±1 reward was only slightly worse than a solve-rate-shaped one; Socratic-Zero's reward-shape variants were within about 0.4 points; a 50%-target reward *lowered* AZR's validation accuracy by 2% ([Chae et al.](https://arxiv.org/abs/2510.27072)). Spend the effort on validity, grounding and diversity (Ch. 3). **Moderate.**
+- **The low edge is where risk concentrates.** "Hard examples" help while they keep mixed outcomes: GRPO on the hardest 10% by base failure gave gains of up to 47% versus 3–15% for easy subsets ([Pikus et al.](https://arxiv.org/abs/2508.14094)). Items with *zero* successes behave differently: hard@8 items (pass@8 = 0) lowered averages by 5.75, 11.24 and 1.07 points across three model settings ([Cheng et al.](https://arxiv.org/abs/2605.28388)). Admit p = 0 items only with a solvability certificate and a plan to make them non-silent (scaffolds, extra rollouts; Ch. 5). **Strong.**
+- **The high edge should retire, not delete.** Retiring p ≥ 0.9 raises ScaleRL's fitted asymptote, but mastered items regress (about 21% of reviewed mastered prompts, [ReMind](https://arxiv.org/abs/2606.03087)); a 1–2% review queue removed GRPO's mid-training plateau. **Moderate.**
+- **The band moves, so re-profile the whole original pool.** Magistral re-grades the entire original set with its RL model; rStar2-Agent re-filters the original 42K set; Tongyi runs a background process that rescans the full pool with intermediate checkpoints; Nemotron 3 Nano re-profiles at plateaus; Llama 4 alternated training with re-filtering to "medium-to-hard" prompts ([note 12](https://arxiv.org/abs/2512.20848); [Llama 4](https://ai.meta.com/blog/llama-4-multimodal-intelligence/)). Items that looked impossible can come back into the band. **Strong.**
+
+### 3.3 What "hard" should mean
+
+**Definition (Proposal).** A task x is *useful-hard* for policy π at time t if all four hold:
+
+1. **Valid.** Well-posed and uniquely answerable; the verifier accepts known-good and rejects known-bad outputs; solvability is certified by construction, a stronger solver, or large-k success.
+2. **Learnable now.** For RL: p̂_π(x) in the band, or low pass@1 with pass@k > 0. For SFT: a teacher solves it and the trace is long and structured.
+3. **Capability-bearing.** Not solvable by guessing, partial input, priors or tool-free lookup; the difficulty comes from the target capability (composition, structure, information that must be acquired), not from tedium, ambiguity, output length or format.
+4. **New.** Decontaminated against training and eval sets, and not a reskin of items already in the pool.
+
+Criterion 3 is where naive complexification fails. "Structure is not difficulty": across seven deep-search datasets built by similar multi-hop recipes, solving cost Ω ranged from 20.6 to 141.0 and the answer appeared at step 3.4 to 46.9 ([FORT](https://arxiv.org/abs/2606.12087)). LLMs asked to "make it harder" mostly add constraints or produce trivial variants: 64% of rejected mutations in a gated study were "too easy" ([Trading Human Curation](https://arxiv.org/abs/2606.03800)), and SSR's direct prompt produced one-line bugs ([SSR](https://arxiv.org/abs/2512.18552)). Criterion 1 is where aggressive hardening fails: lowering OpenSIR's solve-rate floor from 0.5 to 0.1 dropped validity from 70.8% to 42.3% and math accuracy from 29.6 to 26.0, while problems got only slightly harder ([OpenSIR](https://arxiv.org/abs/2511.00602)); <3% accuracy on a new InternBootcamp environment mostly flagged semantic errors ([InternBootcamp](https://arxiv.org/abs/2508.08636)).
+
+**Difficulty compounds, and each axis scales differently.** Useful when predicting where an operator will land (Ch. 2 has the operators):
+
+| Axis | Scaling evidence |
+|---|---|
+| Serial depth / horizon | Composite success ≈ product of atom successes (Pearson ρ 0.69–0.96; 0.3⁵ ≈ 0.0024) ([Algebrarium](https://arxiv.org/abs/2602.08281)); long-horizon accuracy falls *faster* than independent compounding predicts ([h1](https://arxiv.org/abs/2510.07312)); self-conditioning on earlier errors ([Sinha et al.](https://arxiv.org/abs/2509.09677)) |
+| Width / constraint count | Mean per-constraint success 72.0% × 0.922^(k−1); about 41% per constraint at k = 8 gives 5.7% all-pass ([CSE](https://arxiv.org/abs/2608.12426)); two-skill composition success ≈ the square of single-skill success ([MATH²](https://arxiv.org/abs/2407.21009)) |
+| Topology | Right-heavy solution trees stay hardest at equal depth ([Park et al.](https://arxiv.org/abs/2512.01775)); branch–merge dependencies are harder than long chains ([He et al.](https://arxiv.org/abs/2609.19465)) |
+| Expressiveness | RL steps to 90% scale as depth^γ with γ from 1.05 to 2.60 as logic gets richer; the richest logic gave the best transfer (+10.66 on an 8-benchmark mean) ([ScaleLogic](https://arxiv.org/abs/2605.06638)) |
+| Information hiding | Removing information cut solve rate by 70–100 points ([Trading Human Curation](https://arxiv.org/abs/2606.03800)); the same instances scored 0.962 written out vs 0.204 with parameters behind tools ([VHD-Play](https://arxiv.org/abs/2609.27321)) |
+| Tedium (op count, length) | Smooth sigmoid decay with operation count ([GSM-Infinite](https://arxiv.org/abs/2502.05252)); useful for robustness, but difficulty from "computational tedium" is not the same as needing a new method (note 02) |
+
+---

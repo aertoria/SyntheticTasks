@@ -325,3 +325,126 @@ Default to an equal mix across families plus per-family controllers. **Strong** 
 Rule: stage only the tiers whose pass rate would otherwise be about 0. Fill spectrum gaps with bridge tasks (lemma/lift, subproblems, format levels) rather than tuning schedules. If you stage, reset the reference model and the optimizer. **Moderate.**
 
 ---
+
+## 5. Proposer–solver self-play and trained generators
+
+Closed loops, where a proposer writes tasks and a solver learns from them, keep the band full without human authoring. Architectures are in [Ch. 03](03-generation-architectures.md). This section covers what keeps the loops stable when they feed RL.
+
+### 5.1 Five stability rules
+
+1. **Multiply difficulty by an independent validity gate.** Naive setter–solver play is reward-hacked by invalid problems. Working proposer rewards:
+   - [VHG](https://arxiv.org/abs/2605.06660): R = 1[V]·(1 − Acc).
+   - [SSR](https://arxiv.org/abs/2512.18552): −1 for an inconsistent bug artifact.
+   - [OPT-Zero](https://arxiv.org/abs/2609.34205): R_valid × R_correct × R_struct.
+
+   Lowering the solve-rate floor to chase hardness mostly adds broken tasks. In [OpenSIR](https://arxiv.org/abs/2511.00602), moving the floor from 0.5 to 0.1:
+   - cut validity from 70.82% to 42.31%;
+   - moved GPT-5's solve rate only from 89.82% to 78.31%;
+   - lowered math accuracy from 29.57 to 25.97.
+
+   **Strong.**
+2. **Ground the answer outside the model.** Use an executor, database, OR solver, repository tests, corpus or search evidence.
+   - Pseudo-label-only [R-Zero](https://arxiv.org/abs/2508.05004) peaks after 1–3 iterations; label accuracy fell 79% → 69% → 63%.
+   - Grounded variants hold up:
+     - [SPICE](https://arxiv.org/abs/2510.24684): corpus-grounded 43.9 vs 40.7 ungrounded.
+     - [SSP](https://arxiv.org/abs/2510.18821): removing the RAG answerability check dropped GeneralQA from 60.0 to 49.5.
+
+   With self-consistency labels, keep Challenger and Solver as separate weights: pseudo-label accuracy was 71.0% vs 63.4% for a shared model at step 15. **Strong.**
+3. **Never let the loop train its own grader.**
+   - A trained user simulator "force[d] success rates around 50% by directly accepting or rejecting regardless of agent performance" ([SEAD](https://arxiv.org/abs/2602.03548)).
+   - A reward model without chain-of-thought was hacked within about 20 steps, and trajectory length collapsed ([SWE-World](https://arxiv.org/abs/2602.03419)).
+   - A world model learned "self-praise" phrases to fool its judge ([Qwen-AgentWorld](https://arxiv.org/abs/2606.24597)).
+   - A solver hacked an off-the-shelf reward model by answering in Python ([LSP](https://arxiv.org/abs/2509.07414)).
+
+   A learned component may choose tasks or initial states; the grader stays frozen or rule-anchored. **Strong.**
+4. **Keep diversity with a persistent archive at the skill level.**
+   - Within-batch penalties allow cycling across iterations, and different wording hides identical skills ([R-Diverse](https://arxiv.org/abs/2602.13103)). Compare canonical solver code, not question text.
+   - OpenSIR's embedding-distance novelty against the whole pool roughly doubled concept coverage.
+   - [SQL-Zero](https://arxiv.org/abs/2609.04697) deduplicates by masked-SQL template.
+   - A single agent self-calibrates toward easy problems; a population scored by cross-evaluation does not ([PopuLoRA](https://arxiv.org/abs/2605.16727)).
+   - [Vocabulary dropout](https://arxiv.org/abs/2604.03472) gave +4.4 at 8B on R-Zero.
+
+   **Strong.**
+5. **Co-evolve, and add stabilizers.**
+   - Without co-evolution, progress stops:
+     - A fixed proposer lets solver reward saturate near 0.9 ([SSP](https://arxiv.org/abs/2510.18821)).
+     - Fixed opponents fail ([SPIRAL](https://arxiv.org/abs/2506.24119)).
+     - A frozen challenger stops improving after the first iteration ([SCOPE](https://arxiv.org/abs/2605.31433)).
+   - Stabilizers that were needed:
+     - Golden replay of verified good trajectories; without it, formatting collapsed by epoch 4 ([STRETCH](https://arxiv.org/abs/2609.18642)).
+     - 1–5% human anchors ([R-Few](https://arxiv.org/abs/2512.02472)).
+     - A cap on the synthetic share ([DreamGym](https://arxiv.org/abs/2511.03773)).
+     - KL-anchored or reward-weighted-regression generator updates ([GenEnv](https://arxiv.org/abs/2512.19682)). [PROPEL](https://arxiv.org/abs/2606.18284)'s math run collapsed at the lowest KL.
+     - Per-role baselines; without them, SPIRAL models abandoned reasoning after about 200 steps ("thinking collapse").
+
+**The exact shape of the learnability reward matters much less.** **Strong.**
+
+- SSR's consistency-only ±1 reward was only slightly worse than its solve-rate-shaped one.
+- [Socratic-Zero](https://arxiv.org/abs/2509.24726)'s reward-shape variants were within about 0.4 points.
+- A 50%-targeted reward *cut* AZR's validation accuracy by 2% ([Chae et al.](https://arxiv.org/abs/2510.27072)).
+- SPICE saw some spread: variance reward 44.9, R-Zero reward 43.6, threshold 41.4, AZR reward 40.7.
+- OPT-Zero's *structural-complexity* reward beat a solve-rate reward.
+
+Spend the effort on validity, grounding and diversity.
+
+### 5.2 Collapse modes and their signatures
+
+| Failure | Signature to watch | Fix | Source |
+|---|---|---|---|
+| Invalid-problem hacking | Solver accuracy on proposals falls while an external judge's validity rate falls | Multiplicative validity gate | VHG, OpenSIR |
+| "Death spiral" from negative format penalty | Proposer entropy rises and the valid-question rate goes to 0 while solver reward rises misleadingly | Give 0, not −0.1, to malformed proposals. SPICE used ρ = −0.1 without trouble, so watch the valid-proposal rate. | [SSP](https://arxiv.org/abs/2510.18821) |
+| Pseudo-label decay | Accuracy on a gold probe falls each iteration | Stop at about 2–3 iterations; ground the answer | R-Zero |
+| Diversity illusion or tunnel vision | Skill-signature entropy falls; one knob keeps turning (operand length, chains of medium bugs) | Persistent archive; populations | R-Diverse, SSR |
+| Dominant challenger | Randomly failing or hash-seeded tests; obfuscated code | Constrain the action space; 7 consistency checks including inverse mutation testing | SSR |
+| Answer leakage into variants | Variant solve rate near 100% | Reward only a band, e.g. [12.5%, 62.5%] | [SvS](https://arxiv.org/abs/2508.14029) |
+| Role-prompt gold leak | Implausibly high baseline | Audit role prompts. Removing R-Zero's leaked ZebraLogic grid cut the baseline by 62 points. | [LURE](https://arxiv.org/abs/2608.21871) |
+| Sharpening, not expansion | pass@1 rises while pass@k at large k falls below base; entropy collapses | Anchor on real hard goals; variant synthesis | AZR per Chae et al.; SvS |
+
+### 5.3 Anchor generation on your own unsolved and weakly solved items
+
+"Make it harder" without a target produces shallow difficulty. Asked to raise difficulty, LLMs mostly add constraints and borrow the goal problem's surface metaphors ([GASP](https://arxiv.org/abs/2603.15957)). Direct injection gives one-line bugs (SSR). Three anchored patterns expanded the model's boundary. **Moderate** (each is a single study, but all point the same way):
+
+- **Variants of weakly solved items ([SvS](https://arxiv.org/abs/2508.14029)).**
+  - For problems solved 12.5–50% of the time, condition on the policy's own *correct* solution and write answer-preserving variants.
+  - Reward the synthesis only when a variant's solve rate lands in [12.5%, 62.5%].
+  - +18.3 and +22.8 pass@32 on AIME24 and AIME25 (Qwen2.5-32B-Instruct), and entropy stayed stable.
+- **Stepping stones to unsolved goals.**
+  - [GASP](https://arxiv.org/abs/2603.15957) writes a lemma in the p ∈ [0.3, 0.7] band, then a lift of the lemma in [0.1, 0.5] without showing the goalpost again. It solved 11 of 146 pass@100 = 0 goalposts, where AZR and real-data RL solved 0.
+  - [SOAR](https://arxiv.org/abs/2601.18778) rewards a teacher by measured student gain on fail@128 problems: about 4× pass@1 and 2× pass@32 on MATH. Only 32.8% of its useful stepping stones had fully correct answers and 63% were well-posed. For *bridge* data, well-posedness matters more than answer correctness; this does not extend to final RL targets.
+- **Weakness mining ([SwS](https://arxiv.org/abs/2506.08989)).**
+  - Flag items that never exceed 50% accuracy and have a negative slope.
+  - Recombine their concepts into new problems and keep those in [25%, 75%]; about 35% survive.
+  - +10.0% (7B) and +7.7% (32B) across 8 math benchmarks.
+
+### 5.4 Adoption ladder
+
+From cheapest to most expensive:
+
+1. **Directional rewrite ([RLAnything](https://arxiv.org/abs/2602.02488)).** Rewrite with an LLM and accept by the band rule (§4.1). No generator training.
+2. **In-loop answer-preserving variants (SvS).** The policy writes its own variants.
+3. **A generator fine-tuned by reward-weighted regression toward the band ([GenEnv](https://arxiv.org/abs/2512.19682)).**
+   - Reward exp(−β(p̂ − 0.5)²); exclude batches with |p̂ − α| > 0.1 from generator updates.
+   - At 1× data it beat offline Gemini-2.5-Pro augmentation at 3.3× data (0.458 vs 0.438 on BFCL validation).
+4. **Full grounded self-play.** Examples: SSR for repositories, SSP for search, SQL-Zero and OPT-Zero for databases and OR solvers.
+5. **Meta-RL teachers (SOAR).** Very expensive: each teacher reward needs an inner RL run.
+
+Budget for low yield:
+
+- 5.2% of Self-Challenging Code-as-Task proposals survive the full filter ([SCA](https://arxiv.org/abs/2506.01716)).
+- VHG accepted 4,076 of 18,663 integral candidates.
+
+Let the *current* checkpoint propose: the RL checkpoint was a better environment designer than the base model and larger proprietary designers ([From Trainee to Trainer](https://arxiv.org/abs/2606.17682)). At the frontier, [DeepSeek-V4.1-Flash](https://arxiv.org/abs/2609.19969) trains the model itself as a task constructor, rewarded on difficulty and correctness of (problem, environment, verifier) triplets, and re-audits tasks on every RL run. It publishes no formula or ablation (see [Ch. 08](08-frontier-lab-practices.md)).
+
+```python
+def proposer_reward(task, solver_rollouts, gate, archive):
+    if not gate.valid(task):          # executor / solver / RAG check, independent of the solver
+        return 0.0                    # zero, not negative (SSP death spiral)
+    p = mean(solver_rollouts)         # reuse the solver's GRPO group; no extra rollouts (SPICE)
+    if p in (0.0, 1.0):
+        return 0.0                    # unsolvable or trivial earns nothing (AZR; PretrainZero guard)
+    if archive.max_sim(solution_signature(task)) > SIM_MAX:
+        return 0.0                    # persistent, skill-level novelty (R-Diverse, SQL-Zero)
+    return band_score(p)              # any peaked shape; second-order (§5.1)
+```
+
+---
