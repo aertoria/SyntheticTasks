@@ -19,7 +19,7 @@
   - Keeping moderately easy items cut AIME25 output length by about 56%, with pass@1 moving 73.33 → 70.00.
 - **Small pilots cannot see small effects.** At p ≈ 0.5, an unpaired comparison on 30 items needs about a 25-point gap to reach p < 0.05 (derived from the p(1−p)/N rule; about 36 points for 80% power). Seed SD on AIME/AMC is 5–15 points. Hardware, batch size and BF16 alone move accuracy by up to 9%. Use paired per-item analysis with many samples per item, add prompts before adding samples, cluster SEs by seed family, and pre-register a domain-balanced aggregate. Swapping a math-heavy aggregate for a domain-balanced one gave a ranking correlation of ρ = −0.33.
 - **Decision protocol.** Screen with short runs and early-curve fits (ScaleRL's sigmoid fits reproduce the asymptote within ±0.02 across 3 runs). Adopt a data policy only if its paired 95% CI excludes zero across 8–12 matched seeds, no metric in the regression suite drops, and the gain holds on post-cutoff items, on a held-out generator family and on a non-Qwen model.
-- **Audit the generator before training.** Preference leakage is 23.6% when the judge is the generator but 2.8% across model series. A five-way LLM-ID classifier reaches 97.1% accuracy, and students fine-tuned on two teachers' outputs are 98.9% separable. Traits pass through filtered data, including correct-filtered CoT, when teacher and student share a base model. Cross-model output similarity is already 0.71–0.82. LLM MCQ generators put the answer first 47.9–57.9% of the time, and LLM-written NLI is 86–96% solvable from the hypothesis alone.
+- **Audit the generator before training.** Preference leakage is 23.6% when the judge is the generator but 2.8% across model series. A five-way LLM-ID classifier reaches 97.1% accuracy, and students fine-tuned on two teachers' outputs are 98.9% separable. Traits pass through filtered data, including correct-filtered CoT, when teacher and student share a base model. Cross-model output similarity is already 0.71–0.82. LLM MCQ generators put the answer first 47.1–57.9% of the time, and LLM-written NLI is 86–96% solvable from the hypothesis alone.
 - **Verifier and benchmark validity degrade as tasks get harder.** RLVR models game extensional verifiers far more on hard items (40 shortcuts in complexity levels 1–10 vs 458 in levels 11–20). Agentic benchmarks misestimate performance by up to 100% in relative terms; for example, an empty-response agent passes 38% of τ-bench-Airline. Hardened tasks need invariance-checked verifiers, or the measured gains are fake.
 
 ## Methods at a glance
@@ -730,7 +730,7 @@ Link: https://arxiv.org/abs/1803.02324 (NAACL 2018). Related: Proebsting & Polia
     - Sources: 2604.15149.
 12. **External-sampler balancing of answer marginals**
     - What it does: A code RNG decides every structural random choice, and the LLM writes only content.
-    - Easy → hard: "Randomize where the correct answer goes" (first position 47.9–57.9%) → the code draws the position ~ Uniform{A–D} and magnitudes from a target histogram. The LLM writes a stem and distractors conditioned on those draws.
+    - Easy → hard: "Randomize where the correct answer goes" (first position 47.1–57.9%) → the code draws the position ~ Uniform{A–D} and magnitudes from a target histogram. The LLM writes a stem and distractors conditioned on those draws.
     - Keep it verifiable: Re-verify the answer key after insertion, and chi-square-test the marginals.
     - Sources: 2605.01846, 2601.05414.
 13. **Partial-input ablation as a dataset-level hardness audit**
