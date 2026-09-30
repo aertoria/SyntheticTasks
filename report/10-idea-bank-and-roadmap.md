@@ -160,100 +160,78 @@ These nine ideas reuse the checker you already have, so labels are free and the 
 
 ## 3. Theme B: Composition engines
 
-When atoms are saturated, composition is the most reliable way to get new difficulty that stays verifiable ([Chapter 02](02-complexification-operator-taxonomy.md)). Two rules apply to every idea here. Make the atoms reliable first, and train on compositions with RL rather than SFT.
+Once atoms are saturated, composition is the most reliable source of new difficulty that stays verifiable ([Chapter 02](02-complexification-operator-taxonomy.md)). Two rules apply throughout: make the atoms reliable first, and train compositions with RL rather than SFT.
 
 ### B1 · Serial chaining with deterministic adapters and a horizon curriculum
 `Established` · **Strong** · Effort **M**
 
-- **Pitch.** Chain problems that are already labelled, so answer i feeds problem i+1. No new labels are needed.
-- **Mechanism.** Serial composition with typed, integral adapters. Reward only the final answer, and stage the horizon (2 → 3 → 5 links).
-- **Seeds / verifier.** Seeds with code-form solutions or exact answers, and an executor that propagates values through the chain.
-- **Why it should work.** [h1](https://arxiv.org/abs/2510.07312) (Dr. GRPO, 3B instruct):
-  - AIME24 avg@32 went from 5.10 to 10.52;
-  - MATH-500 went from 64.20 to 69.20;
-  - GSM-Symbolic P2 went from 43.08 to 52.00;
-  - the gains held at pass@128.
-
-  At equal compute, uniform mixing and long-only training gave **no** long-horizon gains. Multi-step success tracks the product of per-step success rates (Pearson ρ 0.69–0.96, [Algebrarium](https://arxiv.org/abs/2602.08281)). [Compositional GSM](https://arxiv.org/abs/2410.01748) measures the reasoning gap relative to S1·S2.
-- **Effect / risk.** Controlled, monotone difficulty with exact labels. Risk: under the product law, long chains fail every rollout, so sharpen atoms and stage the horizon.
-- **First experiment.** Build chains of length 2–5 from 5k solved seeds. Compare the staged curriculum with a uniform mix at equal compute. *Success:* gains on held-out natural competition sets, with pass@128 not below the base model.
+- **Pitch.** Chain already-labelled problems so answer i feeds problem i+1; no new labels.
+- **Mechanism / seeds / verifier.** Serial composition with typed, integral adapters; reward only the final answer; stage the horizon (2 → 3 → 5 links). Needs code-form solutions or exact answers and an executor that propagates values.
+- **Why it should work.** [h1](https://arxiv.org/abs/2510.07312) (Dr. GRPO, 3B instruct): AIME24 avg@32 5.10 → 10.52, MATH-500 64.20 → 69.20, GSM-Symbolic P2 43.08 → 52.00, with gains holding at pass@128. At equal compute, uniform mixing and long-only training gave **no** long-horizon gains. Multi-step success tracks the product of per-step success (Pearson ρ 0.69–0.96, [Algebrarium](https://arxiv.org/abs/2602.08281)); [Compositional GSM](https://arxiv.org/abs/2410.01748) measures the gap against S1·S2.
+- **Effect / risk.** Monotone difficulty with exact labels. Risk: under the product law long chains fail every rollout; sharpen atoms and stage the horizon.
+- **First experiment.** Chains of length 2–5 from 5k solved seeds; staged curriculum vs uniform mix at equal compute. *Success:* held-out competition gains with pass@128 not below the base.
 
 ### B2 · Functional composition of mastered atoms, evaluated on held-out atoms
 `Established` (controlled studies) · **Strong** in toy settings, **Emerging** for transfer · Effort **M**
 
-- **Pitch.** Compose functions, tools or transforms the model already executes reliably (h = g∘f), then test on compositions that use atoms held out of training.
-- **Mechanism.** Nesting depth is the dial. Add new *operator types* rather than only more depth.
-- **Why it should work.** In [f(g(x))](https://arxiv.org/abs/2509.25123), RL on depth-2 compositions lifted unseen depth-3 accuracy from about 5% to about 30%. Rejection fine-tuning stayed ≤ 2.6%, and RL on atoms alone stayed below 25% on Level 2. Three further findings from controlled settings:
-  - RL did not transfer to contexts with 0% or 0.1% pretraining exposure, while 1% exposure gave up to +60% pass@128 ([Interplay](https://arxiv.org/abs/2512.07783)).
-  - Adding operator types raised an 8-benchmark average by +10.66, and depth generalization fell to chance at about 3× the training depth ([ScaleLogic](https://arxiv.org/abs/2605.06638)).
-  - Training on composed tasks transferred back down to the parts, but training on the parts did not transfer upward ([He et al.](https://arxiv.org/abs/2609.19465)).
-- **Effect / risk.** Genuinely new compositional skill. Risk: gains may not transfer outside string or DAG worlds. Missing atoms need SFT or mid-training first.
-- **First experiment.** Pick 20 atoms the policy solves at ≥ 90%. Train RL on depth-2 compositions of 15 of them, and evaluate depth 3–4 on the 5 held-out atoms. *Success:* held-out depth-3 accuracy clearly above an atoms-only RL control.
+- **Pitch.** Compose functions, tools or transforms the model already executes reliably (h = g∘f), and test on atoms held out of training.
+- **Mechanism / seeds / verifier.** Nesting depth is the dial; add new *operator types*, not only depth. Execution gives the label.
+- **Why it should work.** In [f(g(x))](https://arxiv.org/abs/2509.25123), RL on depth-2 compositions lifted unseen depth-3 accuracy from about 5% to about 30%, while RFT stayed ≤ 2.6% and atom-only RL stayed below 25% on Level 2. RL did not transfer to contexts with 0% or 0.1% pretraining exposure, but 1% exposure gave up to +60% pass@128 ([Interplay](https://arxiv.org/abs/2512.07783)). Adding operator types raised an 8-benchmark average by +10.66, and depth generalization fell to chance at about 3× the training depth ([ScaleLogic](https://arxiv.org/abs/2605.06638)). Composed training transfers down to the parts; the reverse does not ([He et al.](https://arxiv.org/abs/2609.19465)).
+- **Effect / risk.** New compositional skill. Risk: transfer beyond string or DAG worlds is unproven; missing atoms need SFT or mid-training first.
+- **First experiment.** 20 atoms at ≥ 90%; RL on depth-2 compositions of 15; evaluate depth 3–4 on the other 5. *Success:* held-out depth-3 accuracy clearly above an atoms-only RL control.
 
 ### B3 · Constraint stacking calibrated by p^k, with structure-aware rewards
 `Established` · **Strong** · Effort **S**
 
-- **Pitch.** Set the number k of stacked constraints so that the chance of satisfying all of them lands in the band, then add structure (chains, conditions) rather than just more constraints.
-- **Mechanism.** Constraint stacking plus logic structure (chain, selection with conditions computable from the input), per-constraint checkers, and an intent gate.
-- **Why it should work.**
-  - Per-constraint success follows 72.0% × 0.922^(k−1) across 15 models ([CSE](https://arxiv.org/abs/2608.12426)).
-  - Training on 5–6 constraints beat training on up to 3 ([IFBench](https://arxiv.org/abs/2507.02833)).
-  - Structure beats count. GPT-4 scores 0.626 on Selection+Chain at depth ≥ 3, and 14.9% on the coherent test for multi-layer Selection ([ComplexBench](https://arxiv.org/abs/2407.03978)).
-  - Aggregating rewards by averaging instead of by structure cost 3.9 IFEval and 5 CFBench points ([LsrIF](https://arxiv.org/abs/2601.06431)).
-- **Effect / risk.** A predictable difficulty dial. Risks:
-  - Over-hardening is the default outcome: 10,772 prompts at pass rate 0 against 7,324 in band ([IFDecorator](https://arxiv.org/abs/2508.04632)).
-  - Conflicts: "output JSON" is jointly unsatisfiable with 9 of 24 instructions (Instruction Stacking Collapse, note 08).
-  - Hacking: IFDecorator's intent check cut the trip-wire hack rate from 14.53% to 7.60%.
-- **First experiment.** Fit per-constraint success on your policy and generate prompts at the k for which p^k ≈ 0.4. Compare a per-constraint reward with an all-pass guard against a binary reward. *Success:* higher in-band yield, and gains on constraint families held out of training.
+- **Pitch.** Choose the number of constraints k so all-pass probability lands in the band, then add structure rather than count.
+- **Mechanism / seeds / verifier.** Stacking plus chain and selection structure (conditions computable from the input), one checker per constraint, and an intent gate.
+- **Why it should work.** Per-constraint success follows 72.0% × 0.922^(k−1) across 15 models ([CSE](https://arxiv.org/abs/2608.12426)). Training on 5–6 constraints beat up to 3 ([IFBench](https://arxiv.org/abs/2507.02833)). GPT-4 scores 0.626 on Selection+Chain at depth ≥ 3 and 14.9% on the coherent multi-layer Selection test ([ComplexBench](https://arxiv.org/abs/2407.03978)). Averaging instead of structure-aware aggregation cost 3.9 IFEval and 5 CFBench points ([LsrIF](https://arxiv.org/abs/2601.06431)).
+- **Effect / risk.** A predictable dial. Risks: over-hardening is the default (10,772 prompts at pass rate 0 vs 7,324 in band, [IFDecorator](https://arxiv.org/abs/2508.04632)); conflicts ("output JSON" is jointly unsatisfiable with 9 of 24 instructions, note 08); hacking (IFDecorator's intent check cut the trip-wire hack rate from 14.53% to 7.60%).
+- **First experiment.** Fit per-constraint success on your policy; generate at k with p^k ≈ 0.4; per-constraint reward with an all-pass guard vs binary. *Success:* higher in-band yield and gains on held-out constraint families.
 
 ### B4 · Evaluator-first and compatibility-checked chaining for agent tasks
 `Established` · **Moderate** · Effort **M**
 
-- **Pitch.** Compose trusted checkers, not instructions, and prove the composition can be satisfied before writing any text.
-- **Mechanism.** Sample 2–3 atomic checkers and reparameterize them. Build a golden state that satisfies all of them, and only then write the instruction ([UltraCUA](https://arxiv.org/abs/2510.17790)). For chains, score each ordered pair A → B for executability after A, then beam-search chains ([ChainWorld](https://arxiv.org/abs/2606.21654)).
-- **Seeds / verifier.** Atomic agent tasks with state checkers that satisfy checker(golden) = 1 and checker(initial) = 0 ([CUA-Gym](https://arxiv.org/abs/2605.25624)).
-- **Why it should work.** Evaluator-first tasks had 29% rollout success, against 45% for instruction-first tasks. The best agent completes 31% of ChainWorld chains. Require data dependencies between steps: chains of unrelated steps are "artificially hard" and transfer poorly (note 15).
-- **Effect / risk.** Harder tasks whose checkers you already trust. Risk: one step's checker interfering with another's; hard rules must reject such pairs before an LLM coherence judge sees them.
-- **First experiment.** Build 500 compositions of 2–3 checkers from verified atoms. Compare RL on composed tasks with RL on atoms only. *Success:* gains on held-out apps, reported per step and for the full chain.
+- **Pitch.** Compose trusted checkers, not instructions, and prove joint satisfiability before writing text.
+- **Mechanism / seeds / verifier.** Sample 2–3 atomic checkers, reparameterize, build a golden state that satisfies all, then write the instruction ([UltraCUA](https://arxiv.org/abs/2510.17790)). For chains, score each ordered pair A → B for executability and beam-search ([ChainWorld](https://arxiv.org/abs/2606.21654)). Atoms need checker(golden) = 1 and checker(initial) = 0 ([CUA-Gym](https://arxiv.org/abs/2605.25624)).
+- **Why it should work.** Evaluator-first tasks had 29% rollout success vs 45% for instruction-first; the best agent completes 31% of ChainWorld chains. Require data dependencies: chains of unrelated steps are "artificially hard" and transfer poorly (note 15).
+- **Effect / risk.** Harder tasks with trusted checkers. Risk: checker interference; reject such pairs with hard rules before any LLM coherence judge.
+- **First experiment.** 500 compositions of 2–3 verified atoms; RL on composed vs atoms only. *Success:* held-out app gains, reported per step and per chain.
 
 ### B5 · Feature-tree composition for code with dual-solution cross-verification
 `Established` · **Moderate** · Effort **M**
 
-- **Pitch.** Choose k compatible algorithmic features first, then write the task; label it with an efficient solution and a brute-force solution that must agree.
-- **Mechanism.** Atom composition in specification space, as in [X-Coder](https://arxiv.org/abs/2601.06953). Labels come from differential testing on inputs checked by a validator ([AutoCode](https://arxiv.org/abs/2510.12803)).
-- **Why it should work.**
-  - X-Coder: 64k tasks × 1 solution beat 16k × 4.
-  - X-Coder's residual label error before deterministic filtering was 12.7%, and 94% of it came from one mechanically detectable pattern.
-  - [rStar-Coder](https://arxiv.org/abs/2505.21297)'s mutual verification gave 96.8% output-label accuracy, against 12.7% for GPT-4o-written outputs.
-  - In AutoCode, measured difficulty gain tracked human-rated quality (up to 0.60); o3–human agreement on quality was 0.07.
-- **Effect / risk.** Many diverse, verifiable, hard coding tasks. Risk: consensus labels share misconceptions. Keep the brute-force channel independent.
-- **First experiment.** Compose k = 2–4 features from your seed inventory and audit 100 labels by hand. *Success:* audited label error is low (report it), and in-band yield beats single-feature mutation.
+- **Pitch.** Pick k compatible algorithmic features, then write the task; label with an efficient and a brute-force solution that must agree.
+- **Mechanism / seeds / verifier.** Specification-space atom composition ([X-Coder](https://arxiv.org/abs/2601.06953)); differential testing on validator-checked inputs ([AutoCode](https://arxiv.org/abs/2510.12803)).
+- **Why it should work.** X-Coder: 64k tasks × 1 solution beat 16k × 4; residual label error was 12.7% before a deterministic filter, 94% of it from one detectable pattern. [rStar-Coder](https://arxiv.org/abs/2505.21297) mutual verification: 96.8% label accuracy vs 12.7% for GPT-4o-written outputs. In AutoCode, measured difficulty gain tracked human-rated quality (up to 0.60), while o3–human agreement on quality was 0.07.
+- **Effect / risk.** Diverse, verifiable hard code tasks. Risk: consensus labels share misconceptions; keep the brute-force channel independent.
+- **First experiment.** Compose k = 2–4 features from your inventory; hand-audit 100 labels. *Success:* low audited label error and higher in-band yield than single-feature mutation.
 
 ### B6 · Realistic multi-bug and feature-addition SWE tasks
 `Established` · **Moderate** · Effort **M**
 
-- **Pitch.** Replace one-line synthetic bugs with bugs an agent introduces unintentionally while adding a feature, and with combinations of bugs that were each validated alone.
-- **Mechanism.** FeatAdd agentic bug generation ([BugPilot](https://arxiv.org/abs/2510.19898)) and bug combination ([SWE-smith](https://arxiv.org/abs/2504.21798)). The combined task's fail-to-pass set must equal the union of the individual ones, and the bugs must not cancel.
-- **Why it should work.** FeatAdd bugs touch 4.2 files and 415.9 net lines on average. Claude resolved 41.4% of them, against 65.9% of SWE-smith bugs. 1.2k FeatAdd/BugInstruct bugs beat 3k other bugs by 2%. Prompting an LLM directly "for a bug" collapses to one-line edits ([SSR](https://arxiv.org/abs/2512.18552)).
-- **Effect / risk.** Harder, more realistic SWE data. Risk: BugPilot's GRPO on hard FeatAdd bugs did not beat SFT, which the authors attribute to GRPO needing partial solvability. Use SFT on the hardest tier and RL on the in-band subset.
-- **First experiment.** Generate FeatAdd bugs in 20 repositories and train at equal task count against SWE-smith-only data. *Success:* SWE-bench Verified and Pro gains.
+- **Pitch.** Replace one-line synthetic bugs with bugs an agent introduces while adding features, and with combinations of individually validated bugs.
+- **Mechanism / seeds / verifier.** FeatAdd agentic bugs ([BugPilot](https://arxiv.org/abs/2510.19898)); bug combination ([SWE-smith](https://arxiv.org/abs/2504.21798)) where the combined fail-to-pass set equals the union and bugs do not cancel.
+- **Why it should work.** FeatAdd bugs touch 4.2 files and 415.9 net lines on average; Claude resolved 41.4% of them vs 65.9% of SWE-smith bugs; 1.2k FeatAdd/BugInstruct bugs beat 3k others by 2%. Asking an LLM "for a bug" collapses to one-line edits ([SSR](https://arxiv.org/abs/2512.18552)).
+- **Effect / risk.** Harder, more realistic SWE data. Risk: GRPO on hard FeatAdd bugs did not beat SFT (it needs partial solvability); use SFT on the hardest tier and RL on the in-band subset.
+- **First experiment.** FeatAdd bugs in 20 repositories vs SWE-smith-only at equal task count. *Success:* SWE-bench Verified and Pro gains.
 
 ### B7 · Heterogeneous chains: document hop → SQL hop → code hop
 `Novel` · **Proposal** · Effort **L**
 
-- **Pitch.** A single composed task that crosses modalities, with end-to-end executable ground truth.
-- **Mechanism.** Every hop has a typed output and its own executor: retrieved span → SQL filter → Python aggregation. The gold answer comes from executing the whole composite program. A two-sided gate runs per hop: masking any bridge must cause failure.
-- **Why it is novel.** Note 07 lists "chaining a document hop, a table or SQL hop and a code-execution hop with end-to-end executable verification" as barely explored. [DataMind](https://arxiv.org/abs/2509.25084) chains 2–5 analytic task types but labels them by self-consistency, which its authors acknowledge biases toward easy compositions. QwenLong-L1.5's KG/SQL items and [Spreadsheet-RL](https://arxiv.org/abs/2605.22642) supply the parts.
-- **Effect / risk.** It should transfer to data-analysis and research agents. Risks: realism, and parametric leakage in the document hop (use post-cutoff or fictional documents; see C6).
-- **First experiment.** Build 300 three-hop items with per-hop masking ablations. *Success:* masking any hop defeats a strong solver on ≥ 90% of items, and RL on them beats single-modality chains on held-out heterogeneous tasks.
+- **Pitch.** One composed task across modalities with end-to-end executable ground truth.
+- **Mechanism / seeds / verifier.** Typed hops, each with an executor (retrieved span → SQL filter → Python aggregation); gold from executing the composite program; per-hop two-sided gate (masking any bridge must cause failure).
+- **Why it is novel.** Note 07 calls such chains "barely explored". [DataMind](https://arxiv.org/abs/2509.25084) chains 2–5 analytic task types but labels by self-consistency, which its authors acknowledge biases toward easy compositions. QwenLong-L1.5's KG/SQL items and [Spreadsheet-RL](https://arxiv.org/abs/2605.22642) supply the parts.
+- **Effect / risk.** Should transfer to data-analysis and research agents. Risks: realism and parametric leakage in the document hop (use post-cutoff or fictional documents, C6).
+- **First experiment.** 300 three-hop items with per-hop masking ablations. *Success:* masking any hop defeats a strong solver on ≥ 90% of items, and RL on them beats single-modality chains on held-out heterogeneous tasks.
 
 ### B8 · Branch–merge topology curricula with merge-node rewards
 `Novel` · **Proposal** · Effort **M**
 
-- **Pitch.** Move composition beyond chains to diamonds and non-local dependencies, and put exact intermediate checks at merge nodes.
-- **Mechanism.** A DAG generator whose topology knob runs chain → tree → diamond → coupled. Values at merge nodes are exact, so they can supply partial or process reward.
-- **Why it is novel.** Branch–merge and non-local dependencies still degrade sharply after training on composed data. The open question is which data fixes this, for example graph-shaped traces or process rewards on merge nodes ([He et al.](https://arxiv.org/abs/2609.19465); note 10).
-- **First experiment.** At matched compute, train chain-only against a topology-mixed curriculum with merge-node rewards. *Success:* diamond and coupled accuracy on held-out topologies rises without losing chain accuracy.
+- **Pitch.** Move beyond chains to diamonds and non-local dependencies, with exact checks at merge nodes.
+- **Mechanism / seeds / verifier.** A DAG generator whose topology knob runs chain → tree → diamond → coupled; exact merge-node values supply partial or process reward.
+- **Why it is novel.** Branch–merge and non-local dependencies still degrade sharply after composed training, and which data fixes this is open ([He et al.](https://arxiv.org/abs/2609.19465); note 10).
+- **First experiment.** Chain-only vs a topology-mixed curriculum with merge-node rewards at matched compute. *Success:* diamond and coupled accuracy on held-out topologies rises without losing chain accuracy.
 
 ---
 
