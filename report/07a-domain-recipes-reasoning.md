@@ -509,7 +509,7 @@ A thesis-scale Dafny RL run shows why this matters: verified reward rose from 2.
 - the [Vericoding benchmark](https://arxiv.org/abs/2509.22908) (12,504 specs across Dafny/Verus/Lean; filter first, since about 9% of successful specs were too weak);
 - Dafny2Verus;
 - [VERINA](https://arxiv.org/abs/2505.23135) with VeriScale-expanded tests;
-- [Verus-SpecGym](https://arxiv.org/abs/2605.26457) (Codeforces hacks as the spec oracle; its checks catch 26% of the failures an LLM judge misses).
+- [Verus-SpecGym](https://arxiv.org/abs/2605.26457) (Codeforces hacks as the spec oracle; an LLM judge misses 26% of the failures its checks catch).
 
 ### 4.3 Program induction (ARC-style and programming-by-example)
 
@@ -870,7 +870,7 @@ For a team whose tasks in one of these domains are "too easy", this is the order
    - Add hacking or stress tests, mutant-killing tests, spectests or isomorphic twins as the domain requires.
    - Convert MCQ and bare labels to open answers or certificates.
    - Re-measure pass rates. Part of the apparent saturation can disappear here (SWE-ABS: 78.80% → 62.20%; EvolveCoder: 43.80 → 31.22 on the same problems).
-2. **Profile with the current policy.** Use 16–32 rollouts per item in the exact training harness, and bucket by pass rate.
+2. **Profile with the current policy.** Use 16–32 rollouts per item in the exact training harness, and bucket by pass rate. This is above the 8–16 default in Chapters 05 and 08 because a narrow band needs the precision: at p = 0.5 the 95% half-width is about ±0.35 at 8 rollouts and ±0.17 at 32 (Chapter 01 §6.1).
 3. **Complexify the saturated bucket with the domain's construction-first operator.**
    - Math: chaining and answer-preserving nesting.
    - Formal: subgoal recomposition and aux hiding.

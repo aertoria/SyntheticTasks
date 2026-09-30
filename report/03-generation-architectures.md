@@ -522,7 +522,7 @@ The rule: **harden until the policy (or a frontier probe) fails, while the refer
 - **Keep separate weights when labels come from self-consistency.** Pseudo-label accuracy was 71.0% with separate models vs 63.4% with a shared model at step 15 (R-Zero).
 - **Stabilizers that worked:**
   - golden replay (STRETCH's formatting collapsed by epoch 4 without it);
-  - 1–5% human anchors (R-Few);
+  - 1–5% human anchors (R-Few; an anchor pool of 1% or 5% of WebInstruct, not a share of the training mix like the 20–33% anchor in §11);
   - a capped synthetic fraction (DreamGym);
   - a gold-labelled monitor slice for pseudo-label accuracy.
 

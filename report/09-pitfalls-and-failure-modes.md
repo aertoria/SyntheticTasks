@@ -35,7 +35,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 | # | Failure mode | Bites | Cheapest detector | First guard | Evidence |
 |---|---|---|---|---|---|
 | F1 | Complexity ≠ difficulty | SFT+RL | Per-operator pass-rate histogram on the current policy | Accept a mutation only if pass rate drops | Strong |
-| F2 | Overshoot to unsolvable | RL | Share of items at p = 0 per operator, plus a large-k re-check | Stop hardening at pass@8 ∈ (0, 0.5]; require a solvability certificate | Strong |
+| F2 | Overshoot to unsolvable | RL | Share of items at p = 0 per operator, plus a large-k re-check | Stop hardening at a pass rate over 8 rollouts in (0, 0.5]; require a solvability certificate | Strong |
 | F3 | Ambiguity masquerading as difficulty | RL | Privileged-information test; enumerate alternative answers | Fix the answer first; run a uniqueness check after every obfuscation step | Strong |
 | F4 | Wrong labels and verifiers on hard items | RL | Gold audit slice bucketed by difficulty; TPR/TNR of the verifier | Correct by construction; decorrelated evidence | Strong |
 | F5 | Consensus filters delete the frontier | RL | Difficulty histogram before and after each filter | Answer-first construction; verify only the new increment | Moderate |
@@ -104,10 +104,10 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 - Unit-test generators for level-vs-solve-rate monotonicity; alarm on length collapse after a new family is admitted.
 
 **Mitigate.**
-- Harden until pass@8 ∈ (0, 0.5], and send 0/8 items back for regeneration (**Strong**; IFDecorator plus the band literature in [chapter 05](05-rl-playbook.md)).
+- Harden until the pass rate over 8 rollouts (pass@1) is in (0, 0.5], and send 0/8 items back for regeneration (**Strong**; IFDecorator plus the band literature in [chapter 05](05-rl-playbook.md)).
 - Run a compatibility checker or produce a witness response for stacked constraints.
 - Keep 0-pass items only with a certificate; otherwise keep a small tail (Cascade 2 keeps 10%; [Nemotron-Cascade 2](https://arxiv.org/abs/2603.19220)).
-- *Defer*, don't delete, after one small pilot; scaffold valid p = 0 items ([chapter 05](05-rl-playbook.md)); quarantine a family whose zero-pass rate or length profile is anomalous (**Moderate**).
+- *Defer*, don't delete, after one small pilot (the misfiling evidence is **Strong**, per chapter 05 §2); scaffold valid p = 0 items ([chapter 05](05-rl-playbook.md)); quarantine a family whose zero-pass rate or length profile is anomalous (**Moderate**).
 
 ### F3. Ambiguity masquerading as difficulty
 
@@ -336,7 +336,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Detect.** Measure accuracy on a gold slice every round, bucketed by difficulty, and keep a held-out human-task evaluation.
 
-**Mitigate.** Accumulate, don't replace, and verify what you add (**Strong**); put 20–33% oracle-backed real items in every round (**Moderate**); ground labels in executors, corpora or solvers (SPICE: 43.9 grounded vs 40.7 ungrounded); stop after ~3 rounds unless a held-out metric still improves (**Strong**); with self-consistency labels, keep challenger and solver weights separate (71.0% vs 63.4% pseudo-label accuracy).
+**Mitigate.** Accumulate, don't replace, and verify what you add (**Strong**); put 20–33% oracle-backed real items in every round (**Moderate**); ground labels in executors, corpora or solvers (SPICE: 43.9 grounded vs 40.7 ungrounded); stop after ~3 rounds unless a held-out metric still improves (**Strong**; solution-first escalation that re-validates every child from scratch, such as RST, sustained 15 rounds, per chapter 02 §16.3); with self-consistency labels, keep challenger and solver weights separate (71.0% vs 63.4% pseudo-label accuracy).
 
 ---
 
@@ -490,7 +490,7 @@ Run this before scaling any generator of harder tasks. The items are ordered by 
 
 **C. Before RL**
 - [ ] **Compositions go to RL**, not only to SFT. Atoms and format are installed first, and the checkpoint is chosen with a short RL probe.
-- [ ] **Default blend** (**Moderate**) until your own ablation beats it: equal mix across operator families, a 20–33% oracle-backed real anchor, a 2–10% easy or review pool.
+- [ ] **Default blend** (**Proposal** built on **Moderate** parts, as in chapter 05 §8.2) until your own ablation beats it: equal mix across operator families, a 20–33% oracle-backed real anchor, a 2–10% easy or review pool.
 - [ ] **Self-play guards:** multiplicative validity gate; zero reward for malformed proposals; generator KL β ≥ 0.05; co-evolving (not frozen) solver; separate weights when labels come from self-consistency; ~3-iteration cap with a gold-slice stop rule.
 - [ ] **Dashboard alarms** from section 7 are wired to page someone.
 
