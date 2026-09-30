@@ -83,7 +83,7 @@
 
 Methods are grouped as follows: (A) online self-evolving curricula with learned or VLM judges; (B) exploration-first and hindsight trajectory synthesis; (C) compositional and long-horizon generators and benchmarks with explicit difficulty dials; (D) evaluator-grounded RLVR tuple generators and frontier-lab pipelines; (E) white-box synthetic environments; (F) agentic verifiers.
 
-### A. Online self-evolving curricula with learned or VLM judges
+**Group A: Online self-evolving curricula with learned or VLM judges**
 
 ### WebRL — WebRL: Training LLM Web Agents via Self-Evolving Online Curriculum Reinforcement Learning (Qi et al., 2024)
 [arXiv 2411.02337](https://arxiv.org/abs/2411.02337) · ICLR 2025
@@ -156,7 +156,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
   The World State Model closes much of the gap to GPT-4o-ES.
 - **Difficulty control**: Phase schedule guided by the guidebook.
 - **Reported results**: On five OSWorld applications (VSCode, GIMP, Impress, VLC, Writer), success goes from 11.3% to 34.5%. Specialist-to-generalist training scores 34.5, specialist RL 32.2 and generalist RL 30.6.
-- **Limitations / failure modes**: The reward is only as good as the learned judge. Validation covers only five applications.
+- **Limitations / failure modes**: The reward is only as good as the learned judge. Validation covers only five applications. *(Correction: the researcher listed ICML 2026; no venue could be confirmed, so it is cited as arXiv.)*
 - **How to reuse with easy seed tasks**: For a new tool with no seeds, keep a "what this environment can do" document that grows from exploration. Generate the next tasks by combining two or more documented functions.
 
 ### TTI — Thinking vs. Doing: Agents that Reason by Scaling Test-Time Interaction (Shen et al., 2025)
@@ -253,7 +253,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **Limitations / failure modes**: UI-level anchors miss hidden-state errors. Complexity is measured by length, not by pass rate.
 - **How to reuse with easy seed tasks**: Inherit, merge and rewrite form a minimal, general complexification kit. Store the solved task's goal state and reuse it as the reference for its complexified descendants.
 
-### B. Exploration-first and hindsight trajectory synthesis
+**Group B: Exploration-first and hindsight trajectory synthesis**
 
 ### NNetNav (+ Learn-by-Interact) — NNetNav: Unsupervised Learning of Browser Agents Through Environment Interaction in the Wild (Murty et al., 2024)
 [arXiv 2410.02907](https://arxiv.org/abs/2410.02907) · related: [Learn-by-Interact, arXiv 2501.10893](https://arxiv.org/abs/2501.10893) (Su et al., 2025)
@@ -350,7 +350,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **Limitations / failure modes**: Live-web, judge-verified data used for SFT only. Nearly 1 in 6 accepted trajectories may be a false positive.
 - **How to reuse with easy seed tasks**: Use user-simulator follow-ups as a cheap way to extend a solved seed into a multi-turn task. Ensemble verifiers that fail in different ways instead of relying on a single judge.
 
-### C. Compositional and long-horizon generators and benchmarks with explicit difficulty dials
+**Group C: Compositional and long-horizon generators and benchmarks with explicit difficulty dials**
 
 ### AgentSynth — AgentSynth: Scalable Task Generation for Generalist Computer-Use Agents (Xie et al., 2025)
 [arXiv 2506.14205](https://arxiv.org/abs/2506.14205) · ICLR 2026
@@ -431,7 +431,8 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **How it makes tasks harder**: Failure-pattern-targeted design and long professional workflows. Seeded tasks need 50–80 steps; unseeded ones need 30–50 and drift into feature demos. The design guidelines reject "artificially hard" tasks: chains of hundreds of subtasks, or any task that cannot be described in fewer than 250 words.
 - **Correctness / verification**: A checklist VLM verifier uses *privileged information* extracted from set-up scripts by a separate coding agent, for example the correct tumour location in a downloaded medical dataset. Integrity items (the state was reached through the GUI, no fabricated outputs) zero the score when violated.
   - On 60 trajectories, task-level agreement with humans is 93.3% for the checklist verifier (90.9% per item), 81.7% for a direct VLM judge and 43.3% for model-written programmatic verifiers. The scripts mostly failed to parse the data formats in the end state.
-  - Across about 3,000 trajectories, integrity checks flagged about 1.5% of high-scoring runs: 21 flags, 15 true positives. In 18 of the 21, the completion checklist had already failed the run. One caught case fabricated hash values in a forensics report.
+  - Across about 3,000 Gemini-3-Flash trajectories, integrity checks flagged about 1.5% of high-scoring runs (score above 75): 21 flags, 15 true positives. Examples: fabricated hash values in an Autopsy forensics report, and a "correct" answer written into an Epi Info report that the tool never displayed.
+  - In 18 of the 21 flagged runs, the completion checklist had already failed the run. The other 3 had perfect completion scores and were all false positives. So in this evaluation the integrity checks changed no pass results; the authors keep them as a guard for harder future tasks.
 - **Difficulty control**: Seeding increases set-up success (88.9% versus 55.2% without seeds) and horizon. The long split often needs more than 500 steps.
 - **Reported results**: More than 10K tasks over 200 GDP-grounded applications. A distilled 2B VLM beats models twice its size. The weakest teacher, Kimi-K2.5 (39.8), produced the best students, better than Opus 4.5 (53.5).
   - CUA-World-Long at 500 steps and a $5 cap: the best pass rate is 7.5% (Gemini 3 Flash).
@@ -507,7 +508,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **Limitations / failure modes**: Robustness, not new capability.
 - **How to reuse with easy seed tasks**: Re-harden saturated seeds by injecting pop-ups, focus switches, delayed loads and forced action deviations mid-episode. Keep the checker and re-verify solvability.
 
-### D. Evaluator-grounded RLVR tuple generators and frontier-lab pipelines
+**Group D: Evaluator-grounded RLVR tuple generators and frontier-lab pipelines**
 
 ### CUA-Gym — CUA-Gym: Scaling Verifiable Training Environments and Tasks for Computer-Use Agents (Wang et al., 2026)
 [arXiv 2605.25624](https://arxiv.org/abs/2605.25624)
@@ -648,7 +649,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **Limitations / failure modes**: The general-web reward is a learned ORM with notable false positives, and the pipeline is described qualitatively.
 - **How to reuse with easy seed tasks**: Search-agent hardening (obfuscation, multi-hop) transfers to GUI tasks with answer-checkable outputs. For environments you control, expose state variables and read them in checkers.
 
-### E. White-box synthetic environments (checkable by construction)
+**Group E: White-box synthetic environments (checkable by construction)**
 
 ### GUI-Genesis — GUI-GENESIS: Automated Synthesis of Efficient Environments with Verifiable Rewards for GUI Agent Post-Training (Cao et al., 2026)
 [arXiv 2602.14093](https://arxiv.org/abs/2602.14093)
@@ -737,7 +738,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 - **Limitations / failure modes**: Mainly a data and benchmark contribution. Without strict isolation, agents could copy the reference.
 - **How to reuse with easy seed tasks**: Any working artifact (API, CLI, spreadsheet with formulas, small app) becomes a hard, verifiable task: "reimplement this from its observable behaviour". Tests come from the artifact itself.
 
-### F. Agentic verifiers (rewards for tasks with no hand-written checker)
+**Group F: Agentic verifiers (rewards for tasks with no hand-written checker)**
 
 ### IRA — Interactive Reward Agent: GUI Task Evaluation via Environment-State Verification (Shi et al., 2026)
 [arXiv 2607.25904](https://arxiv.org/abs/2607.25904)
@@ -764,7 +765,7 @@ Methods are grouped as follows: (A) online self-evolving curricula with learned 
 [arXiv 2602.00575](https://arxiv.org/abs/2602.00575)
 - **Mechanism**: VAGEN (Verification via Agentic Trajectory-Grounded Environment Interaction) is a tool-augmented verifier agent. It follows a "surface-to-latent, cheap-to-expensive" Progressive Verification Mechanism: it first inspects trajectory evidence, then probes environment state (shell, files, GUI revisits) only when the visual evidence is ambiguous. In its analysis, the shell tool was invoked 920 times.
 - **How it makes tasks harder**: Not applicable (verifier).
-- **Correctness / verification**: Accuracy above 90% against human ground truth on OSWorld-Verified and AndroidWorld evaluations. A manual audit of all trajectories that the benchmark scripts judged successful found **no false positives**. The script errors were false negatives from multiple completion paths and ambiguous descriptions: two annotators found 37 and 35 such cases, 34 in common.
+- **Correctness / verification**: Accuracy above 90% against human ground truth on OSWorld-Verified. The paper also quantifies how much easier verifying is than solving: Claude-Sonnet-4.5 succeeds on 55.9% of OSWorld-Verified tasks as an actor (28.5 steps on average) but judges correctly 83.1% of the time as a verifier (17.4 steps); on AndroidWorld the figures are 62.1% and 93.1%. A manual audit of all trajectories that the benchmark scripts judged successful found **no false positives**. The script errors were false negatives from multiple completion paths and ambiguous descriptions: two annotators found 37 and 35 such cases, 34 in common.
 - **Difficulty control**: Not applicable.
 - **Reported results**: GRPO on all 6K AgentSynth tasks (UI-TARS-1.5-7B, 16 rollouts per task, 50-step cap) reaches 34.3% on OSWorld-Verified with VAGEN rewards, 3.8 points above the strongest baseline reward model, ProRe. Trajectory-aware judges (ZeroGUI-style, FullTrajEval) beat those of DigiRL, DistRL and WebRL.
 - **Limitations / failure modes**: More expensive than passive judging.
@@ -899,7 +900,7 @@ Examples marked *(illustrative)* are my own constructions; the others come from 
 3. **Never let one agent write both the solution and the reward.** CUA-Gym saw the reward "re-check the construction procedure instead of measuring task completion", as in `chart_verified = True` and bare file-existence scoring. An information barrier plus a static forbidden-pattern scan fixed it. The rule transfers to code, SQL, spreadsheet and tool tasks.
 4. **GUI tasks leak to non-GUI shortcuts.**
    - Epoch AI: about 15% of OSWorld tasks need only a terminal, and another 30% can largely substitute scripts for GUI work.
-   - Gym-Anything's integrity items caught fabricated forensic hashes and similar shortcuts (15 true positives in 21 flags), although in 18 of the 21 flagged runs the completion checklist had already failed the run.
+   - Gym-Anything's integrity items caught fabricated forensic hashes and report values the tool never displayed (15 true positives in 21 flags). None of these changed a pass result, because the 18 flagged runs that failed had already failed the completion checklist and the 3 perfect-score flags were false positives. So integrity checks are insurance, not yet a measured gain.
    - RecreationWorld measured per-model rates of network, protected-path and binary-inspection attempts.
 
    If the target skill is GUI operation, reward *how* the state was reached (integrity items) or block the shortcut channels.
@@ -921,7 +922,7 @@ Examples marked *(illustrative)* are my own constructions; the others come from 
     - GUI-Genesis: performance rose monotonically from 240 to 969 environments.
 
     When tasks saturate, new environments or states often beat harder wording.
-11. **Generators can outrun solvers; build on that asymmetry.** Checking an outcome is easier than achieving it (PAE). Forward-solving short steps is easier than inferring the whole plan (AgentSynth). Models can build working apps they cannot yet navigate (GUI-Genesis). Search with a process reward model solves tasks greedy decoding cannot (UI-Genie). Design generators around a *verified forward process* rather than an LLM imagining hard tasks.
+11. **Generators can outrun solvers; build on that asymmetry.** Checking an outcome is easier than achieving it (PAE). VAGEN quantifies this: Claude-Sonnet-4.5 solves 55.9% of OSWorld-Verified tasks but verifies at 83.1%, and on AndroidWorld solves 62.1% but verifies at 93.1%. Forward-solving short steps is easier than inferring the whole plan (AgentSynth). Models can build working apps they cannot yet navigate (GUI-Genesis). Search with a process reward model solves tasks greedy decoding cannot (UI-Genie). Design generators around a *verified forward process* rather than an LLM imagining hard tasks.
 12. **Judge inputs matter.**
     - More context helps: all screenshots beat the last one in ZeroGUI (precision 53.7 vs 47.5), and GPT-4o's precision on OSWorld rises from 46.3 to 74.6 with the full sequence (SEAgent).
     - The agent's self-report hurts precision (44.3).
@@ -987,7 +988,7 @@ Examples marked *(illustrative)* are my own constructions; the others come from 
 - **Learned GUI task proposers.** Every generator reviewed here is a frozen LLM or agent followed by post-hoc filtering. None of the roughly 40 works trains the GUI task proposer itself on a learnability reward (0 < p < 1) combined with checker validity. Note 17 covers this for other domains, including DeepSeek-V4.1-Flash's trained task constructor.
 - **Predicting difficulty before rollouts.** Each candidate costs 8–16 VM rollouts. The only cheap proxies are WebRL's critic, MobileGUI-RL's simulated step count, WebGym's fact count, AutoWebWorld's FSM goal depth and AgentSynth's k. None is shown to be calibrated against the policy's actual pass rate.
 - **Verified RL tasks of 100–500+ steps.** CUA-World-Long (VLM-verified) and OSWorld 2.0 (hand-built, 108 tasks) are evaluation sets. No open pipeline yet produces thousands of semantically coupled long workflows with state-grounded partial credit and anti-hacking audits. Phase-state chaining plus compatibility checks is the most promising route.
-- **Checking the process, not just the end state.** Rewarding *how* a state was reached (through the GUI, without fabricated values, without a terminal bypass) is needed to train GUI skill rather than scripting. Current integrity checks are VLM-based and rarely change the outcome: 3 of Gym-Anything's 21 flags changed the pass result.
+- **Checking the process, not just the end state.** Rewarding *how* a state was reached (through the GUI, without fabricated values, without a terminal bypass) is needed to train GUI skill rather than scripting. Current integrity checks are VLM-based and did not change a single pass result in Gym-Anything's evaluation: 18 of 21 flags were already failing, and the 3 perfect-score flags were false positives.
 - **Sim-to-real fidelity metrics.** Mock and surrogate apps transfer (GUI-Genesis, PhoneWorld, CUA-Gym-Hub, AutoWebWorld), but fidelity is uneven. PhoneWorld's functional-page coverage is 51–80% even though rendered-page coverage is above 96%, and cross-app gains did not transfer (20 → 18). There is no standard metric of which dynamics a surrogate omits or which surrogate-specific shortcuts policies learn.
 - **Conflicting evidence on curriculum direction.** TTI and MAI-UI gained from *growing* step budgets; WebGym gained from *tightening* them. MAI-UI and MobileGUI-RL gained from easy-to-hard schedules; WebGym found a hard-biased mix worse than natural sampling. There are no controlled studies that separate the RL algorithm (filtered BC, GRPO, PPO), the reward noise and the task distribution.
 - **Dynamic, streaming and multi-party tasks with verifiers.** Mid-task information, changing intent, simulated users and multi-agent coordination are the hardest phenomena in OSWorld 2.0. The consistency and exploitability of LLM user simulators in GUI RL have not been measured (note 17 reports that simulators elsewhere are too agreeable).
