@@ -2,19 +2,12 @@
 
 > **Key takeaways**
 >
-> - **Spend the first month making the seeds you already have hard again before you build a generator.** The cheapest high-confidence moves reuse the existing verifier. Audit and harden the tests, strip shortcuts, rewrite stems so the gold answer is preserved, perturb tool-use inputs without changing the oracle, and strip hints. All of these are established practice (**Strong/Moderate**).
-> - **The most reliable sources of new difficulty build the task from verified parts.** Three examples: composition of atoms the model has mastered (chaining with a horizon curriculum, constraint stacking calibrated by p^k, evaluator-first chaining), solution-first recursive escalation of executable artifacts (RST), and planted or answer-first construction. Train compositions with RL rather than SFT (**Strong**).
-> - **"Hard" usually means "broken" unless each candidate passes the same gates.** Every candidate needs:
->   - a bundle contract: the oracle passes, a no-op fails, known-bad solutions fail;
->   - a two-sided solvability gate;
->   - shortcut probes;
->   - a pilot pass-rate band measured on *your* policy;
->   - a red-team pass.
->
->   Log yield and cost per operator. In the one controlled RLVR study, 64% of rejected mutations were rejected for being too easy ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
-> - **Trained generators are the 60–90-day bet.** Examples are validity-gated setter RL, SvS, stepping stones and a learned constructor for (problem, environment, verifier) triplets. They pay off once static operators stop filling the band. The loop must never train the grader (**Moderate/Emerging**).
-> - **About a quarter of the ideas below are novel proposals built from the open problems in the notes.** They include operator-conditioned difficulty priors, an online re-complexification service, "harder-than" certificates checked by the Lean kernel, and RST applied to workbooks and notebooks. Each is marked **Proposal** and ships with a first experiment and a kill criterion.
-> - **Adopt a data policy only if it passes the decision protocol in §14.** Its paired 95% CI must exclude zero over 8–12 matched seeds. The gain must also hold on held-out operator families, on post-cutoff items and on a non-Qwen model, with no drop on the regression suite ([§14](#14-experiment-protocol)).
+> - **First make the seeds you already have hard again; build generators second.** The cheapest high-confidence moves reuse the existing verifier: audit and harden tests, strip shortcuts, answer-preserving stem rewrites, oracle-preserving tool perturbations, hint stripping. All are established practice (**Strong/Moderate**).
+> - **New difficulty is most reliable when built from verified parts:** composition of mastered atoms (chaining with a horizon curriculum, p^k-calibrated constraint stacking, evaluator-first chaining), solution-first recursive escalation of executable artifacts (RST), and planted or answer-first construction. Train compositions with RL, not SFT (**Strong**).
+> - **"Hard" usually means "broken" unless every candidate passes the same gates:** bundle contract (oracle passes, no-op fails, known-bad fails), two-sided solvability, shortcut probes, a pilot band on *your* policy, and a red-team pass. Log yield and cost per operator: in the one controlled RLVR study, 64% of rejected mutations were too easy ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
+> - **Trained generators are the 60–90-day bet** (validity-gated setter RL, SvS, stepping stones, a learned constructor of (problem, environment, verifier) triplets). They pay off once static operators stop filling the band, and the loop must never train its own grader (**Moderate/Emerging**).
+> - **About a quarter of the ideas are novel proposals** built from the notes' open problems (operator-conditioned priors, online re-complexification, Lean-checked "harder-than" variants, RST for workbooks and notebooks). Each is tagged **Proposal** and carries a first experiment and a kill criterion.
+> - **Adopt a data policy only if its paired 95% CI excludes zero over 8–12 matched seeds** and the gain holds on held-out operator families, post-cutoff items and a non-Qwen model, with no regression-suite drop ([§14](#14-experiment-protocol)).
 
 ## Contents
 
@@ -311,101 +304,78 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 ### D1 · Recursive solution-first escalation (RST) for executable tasks
 `Established` · **Moderate** · Effort **M**
 
-*Pitch:* grow the reference solution first, then realign the environment, the verifier and, last, the instruction; repeat on the accepted children.
-- **Mechanism / seeds / verifier.** A round extends `solve.sh`, realigns the environment, extends the verifier, then rewrites the instruction. Gates:
-  - the oracle passes in a fresh sandbox;
-  - contract validity;
-  - minimum deltas: ≥ 3 files, ≥ 8 solution lines, ≥ 12 verifier lines;
-  - an instruction cap: ≤ 180 words and ≤ 1.6× the seed.
-
-  Accepted children reseed the next round under diversity caps.
-- **Evidence.** Over 15 rounds from 639 seeds, DeepSeek-V4-Pro pass@4 fell from 90% to 2.5%. About 50% of attempts were still accepted each round, at about $0.05 per task, and the median assertion count grew from 17 to 57 ([RST](https://arxiv.org/abs/2608.05466)). Training on this pool: GRPO stayed flat at 51.7%, while PPO with a warm-started critic and reward r = P/20 reached 64.0% ([T1](https://arxiv.org/abs/2609.11042)). LLM rewrites of task *descriptions* did not beat untouched ones (OpenThoughts-Agent, note 16).
-- **Effect / risk.** Compounding, verified difficulty at low cost. Risks: realism drift (nearest-neighbour similarity rose from 0.22 to 0.46 over rounds), and exploitability by round is unknown (see J5). Plan for dense rewards.
-- **First experiment.** Run 3 rounds on 200 seeds. Train with an assertion-count reward on round 2–3 tasks against the original seeds. *Success:* held-out terminal-benchmark gains, pass rate falling each round, acceptance around 50%.
+*Pitch:* grow the reference solution first, then realign the environment, the verifier and, last, the instruction; reseed with the accepted children.
+- **Mechanism / seeds / verifier.** Each round extends `solve.sh`, realigns the environment, extends the verifier, then rewrites the instruction. Gates: fresh-sandbox oracle pass; contract validity; minimum deltas (≥ 3 files, ≥ 8 solution lines, ≥ 12 verifier lines); instruction ≤ 180 words and ≤ 1.6× the seed. Reseed under diversity caps.
+- **Evidence.** Over 15 rounds from 639 seeds, DeepSeek-V4-Pro pass@4 fell from 90% to 2.5%, with about 50% of attempts accepted each round at about $0.05 per task and median assertions growing from 17 to 57 ([RST](https://arxiv.org/abs/2608.05466)). On this pool GRPO stayed flat at 51.7%, while PPO with a warm-started critic and reward r = P/20 reached 64.0% ([T1](https://arxiv.org/abs/2609.11042)). LLM rewrites of task *descriptions* did not beat untouched ones (OpenThoughts-Agent, note 16).
+- **Effect / risk.** Compounding verified difficulty at low cost. Risks: realism drift (nearest-neighbour similarity 0.22 → 0.46 over rounds) and unknown exploitability by round (J5). Plan for dense rewards.
+- **First experiment.** 3 rounds on 200 seeds; assertion-count reward on round-2/3 tasks vs the original seeds. *Success:* held-out terminal-benchmark gains, pass rate falling per round, acceptance around 50%.
 
 ### D2 · RST for workbooks, notebooks and documents
 `Novel` · **Proposal** · Effort **M–L**
 
 *Pitch:* the published gap most directly exploitable by a team with easy, execution-verified office seeds.
-- **Mechanism / seeds / verifier.** Each round grows the reference edit program: add a sheet, deepen formula chains, add a pivot or chart. Recompute in real Excel, verify on 3–5 input variants with perturbed values, check that formulas exist rather than pasted values, apply preservation predicates, and reseed. For notebooks, extend the executed code, re-execute for new gold, then abstract the instruction.
-- **Why novel.** Note 16 says no published pipeline does this, yet every component exists. [Spreadsheet-RL](https://arxiv.org/abs/2605.22642) supplies the environment (SpreadsheetBench 12.0% → 23.4% for Qwen3-4B-Thinking). [SpreadsheetBench](https://arxiv.org/abs/2406.14991) supplies multiple test cases per instruction. [WTM](https://arxiv.org/abs/2608.07873) supplies inversion and specificity levels (scores collapse at ≥ 5 transformations), and [DocOps](https://arxiv.org/abs/2607.19865) supplies preservation predicates. [LongDS](https://arxiv.org/abs/2605.30434)'s 47-point late-turn drop motivates multi-turn counterfactual and rollback sessions with gold replayed per turn.
-- **Risk.** LibreOffice and headless engines diverge from Excel, and 88.5% of WTM failures are placement and shape, so check those explicitly.
-- **First experiment.** Run 100 workbook seeds for 4 rounds. *Success:* pass rate falls monotonically at ≥ ~50% acceptance, with zero passes from hard-coded values on the perturbed variants.
+- **Mechanism / seeds / verifier.** Each round grows the reference edit program (add a sheet, deepen formula chains, add a pivot or chart), recomputes in real Excel, verifies on 3–5 perturbed input variants, checks that formulas rather than pasted values exist, applies preservation predicates, and reseeds. For notebooks: extend the executed code, re-execute for new gold, then abstract the instruction.
+- **Why novel.** Note 16 finds no such pipeline, though every part exists: [Spreadsheet-RL](https://arxiv.org/abs/2605.22642) (SpreadsheetBench 12.0% → 23.4% for Qwen3-4B-Thinking), multi-test-case [SpreadsheetBench](https://arxiv.org/abs/2406.14991), [WTM](https://arxiv.org/abs/2608.07873) inversion and specificity levels (scores collapse at ≥ 5 transformations), and [DocOps](https://arxiv.org/abs/2607.19865) preservation predicates. [LongDS](https://arxiv.org/abs/2605.30434)'s 47-point late-turn drop motivates multi-turn counterfactual and rollback sessions with per-turn replayed gold.
+- **Risk.** LibreOffice and headless engines diverge from Excel, and 88.5% of WTM failures are placement and shape; check them explicitly.
+- **First experiment.** 100 workbook seeds × 4 rounds. *Success:* monotone pass-rate decline at ≥ ~50% acceptance and zero passes from hard-coded values on perturbed variants.
 
 ### D3 · Logged dirty-data injection with gold computed on the clean source
 `Novel` (for RL) · **Proposal** · Effort **M**
 
 *Pitch:* same question, messier data, exact gold.
-- **Mechanism / seeds / verifier.** Corrupt a clean table in logged ways: duplicates, mixed date formats, cents vs dollars, nulls, and genuine outliers that must *not* be removed. Compute the gold on the clean source under stated cleaning rules. Make the rules discoverable (contract validity).
-- **Why novel.** Note 16 finds label-preserving corruption only in evaluation and cleaning studies, not in RL. Profiling baselines beat LLM agents at detection (F1 0.561 vs 0.421), so the skill is weak. [DSGym](https://arxiv.org/abs/2601.16344)-SFT (2k execution-verified queries) took Qwen3-4B from 2.9% to 33.07% on DABStep-hard, which shows data tasks respond to synthetic data. [SandMLE](https://arxiv.org/abs/2604.04872)'s micro-scale data keeps rollouts more than 13× faster.
-- **First experiment.** Apply 5 corruption types at 3 intensities to 300 analysis tasks. *Success:* pass rate falls monotonically with intensity, and real dirty-data evaluations improve.
+- **Mechanism / seeds / verifier.** Corrupt a clean table in logged ways (duplicates, mixed date formats, cents vs dollars, nulls) and add genuine outliers that must *not* be removed; compute gold on the clean source under stated, discoverable cleaning rules.
+- **Why novel.** Note 16 finds label-preserving corruption only in evaluation and cleaning studies, where profiling baselines beat LLM agents at detection (F1 0.561 vs 0.421). Data tasks do respond to synthetic training: [DSGym](https://arxiv.org/abs/2601.16344)-SFT (2k execution-verified queries) took Qwen3-4B from 2.9% to 33.07% on DABStep-hard. [SandMLE](https://arxiv.org/abs/2604.04872)-style micro-scale data keeps rollouts more than 13× faster.
+- **First experiment.** 5 corruption types × 3 intensities on 300 analysis tasks. *Success:* pass rate falls monotonically with intensity, and real dirty-data evaluations improve.
 
 ### D4 · Steered simulator perturbations, noise curricula and infeasible variants
 `Established` · **Moderate** · Effort **M**
 
 *Pitch:* inject realistic adversity while the goal and end-state checker stay fixed.
-- **Mechanism / seeds / verifier.** Four kinds of perturbation:
-  - intermittent errors, pagination, partial results and withheld answers ([Qwen-AgentWorld](https://arxiv.org/abs/2606.24597));
-  - a tool-failure budget that includes silent value corruption, plus a "stop" reward for episodes with every path blocked ([BENCH2ROBUST](https://arxiv.org/abs/2608.11977));
-  - GUI pop-ups mid-task ([AnTrap](https://arxiv.org/abs/2608.24099));
-  - infeasible tasks made true by construction ([ZeroGUI](https://arxiv.org/abs/2505.23762)).
-
-  Keep state in code or a database, and let the LLM render only surface text. EnvSimBench found an accuracy cliff once several state variables change at once (note 17).
-- **Evidence.**
-  - Uncontrolled simulated RL gave nothing (Tool Decathlon 32.4 → 31.5), while instructed perturbations gave +3.7 Tool Decathlon and +12.3 MCPMark.
-  - LongCat-2601's noise curriculum raised the noisy benchmark versions without hurting the clean ones.
-  - Removing ZeroGUI's infeasible tasks dropped infeasible-subset success from 41.3 to 22.1.
-  - Randomizing the agent harness is a related lab practice ([Kimi K3](https://arxiv.org/abs/2607.24653)).
-- **Risk.** A perturbation can make the task unsolvable (AnTrap: 91% passed its solvability audit), and a policy can learn to refuse by default. Balance the infeasible fraction.
-- **First experiment.** Add 4 perturbation types at 3 levels to 500 tasks, and report clean and noisy scores side by side. *Success:* noisy scores rise and clean scores do not fall.
+- **Mechanism / seeds / verifier.** Intermittent errors, pagination, partial results and withheld answers ([Qwen-AgentWorld](https://arxiv.org/abs/2606.24597)); a tool-failure budget including silent value corruption, with a "stop" reward when every path is blocked ([BENCH2ROBUST](https://arxiv.org/abs/2608.11977)); GUI pop-ups mid-task ([AnTrap](https://arxiv.org/abs/2608.24099)); infeasible tasks true by construction ([ZeroGUI](https://arxiv.org/abs/2505.23762)); randomized agent harnesses ([Kimi K3](https://arxiv.org/abs/2607.24653)). Keep state in code or a database and let the LLM render only surface text; EnvSimBench found a cliff once several state variables change at once (note 17).
+- **Evidence.** Uncontrolled simulated RL gave nothing (Tool Decathlon 32.4 → 31.5); instructed perturbations gave +3.7 Tool Decathlon and +12.3 MCPMark. LongCat-2601's noise curriculum raised noisy benchmark versions without hurting clean ones. Removing ZeroGUI's infeasible tasks dropped infeasible-subset success from 41.3 to 22.1.
+- **Risk.** Perturbations can make tasks unsolvable (AnTrap: 91% passed its solvability audit), and policies can learn to refuse by default; balance the infeasible fraction.
+- **First experiment.** 4 perturbation types × 3 levels on 500 tasks, clean and noisy scores side by side. *Success:* noisy scores rise, clean scores do not fall.
 
 ### D5 · State inversion: break a healthy environment
 `Established` · **Moderate** · Effort **M**
 
 *Pitch:* the original good state is the oracle.
-- **Mechanism / seeds / verifier.** An agent degrades a working environment (mis-pinned dependency, missing environment variable, broken permissions) until tests fail ([CLI-Gym](https://arxiv.org/abs/2602.10999)). For workbooks, strip derived artifacts in dependency order ([WTM](https://arxiv.org/abs/2608.07873)). Expose only symptoms (RST's diagnostics family). Forbid leftover backups, and filter recoveries that use cached git or conda state.
-- **Effect / risk.** Diagnosis-heavy tasks with free labels. Risk: residue from the degradation reveals the fix.
-- **First experiment.** Degrade 200 containers with 1–3 faults each. *Success:* no-op fails, oracle passes, in-band yield, and no successful recovery through a cache.
+- **Mechanism / seeds / verifier.** An agent degrades a working environment (mis-pinned dependency, missing environment variable, broken permissions) until tests fail ([CLI-Gym](https://arxiv.org/abs/2602.10999)); for workbooks, strip derived artifacts in dependency order ([WTM](https://arxiv.org/abs/2608.07873)). Expose only symptoms, forbid leftover backups, and filter recoveries that use cached git or conda state.
+- **Effect / risk.** Diagnosis-heavy tasks with free labels. Risk: degradation residue reveals the fix.
+- **First experiment.** Degrade 200 containers with 1–3 faults each. *Success:* no-op fails, oracle passes, in-band yield, no recovery through a cache.
 
 ### D6 · Phase-state chaining for long workflows
 `Established` (recent) · **Emerging** · Effort **L**
 
 *Pitch:* build long, coupled workflows from validated phases.
-- **Mechanism / seeds / verifier.** Split a workflow into phases that each have a checker. Serialize phase k's validated end state as phase k+1's start state ([Qwen-CUA](https://arxiv.org/abs/2608.02352)). Screen the chain with ChainWorld's compatibility rules. Train on the full chain, rewarding either the sum or the conjunction of the phase checkers. Later checkers must not depend on artifact IDs created by one particular earlier solution.
-- **Evidence.** Qwen-CUA reaches 86.2 on OSWorld-Verified with about 40,000 tuple-format tasks. Note 15 names phase-state chaining plus compatibility checks as the most promising route to verified RL tasks of 100–500+ steps, which no open pipeline yet produces at scale. Lengthening the horizon alone destabilizes RL; reduce it first with macro-actions and subgoals ([2605.02572](https://arxiv.org/abs/2605.02572)).
-- **First experiment.** Build 4-phase chains in 3 applications. *Success:* full-chain success on held-out applications, with sum and conjunction rewards compared.
+- **Mechanism / seeds / verifier.** Each phase has a checker; phase k's validated end state becomes phase k+1's start state ([Qwen-CUA](https://arxiv.org/abs/2608.02352)); screen chains with ChainWorld's compatibility rules; train end to end on the sum or conjunction of phase checkers. Later checkers must not depend on artifact IDs created by one particular earlier solution.
+- **Evidence.** Qwen-CUA reaches 86.2 on OSWorld-Verified with about 40,000 tuple-format tasks. Note 15 names phase-state chaining plus compatibility checks as the most promising route to verified 100–500+-step RL tasks, which no open pipeline yet produces at scale. Lengthening horizons alone destabilizes RL; reduce them first with macro-actions and subgoals ([2605.02572](https://arxiv.org/abs/2605.02572)).
+- **First experiment.** 4-phase chains in 3 applications. *Success:* full-chain success on held-out applications; compare sum vs conjunction rewards.
 
 ### D7 · Co-harden capability and security, with benign twins
 `Established` (recent) · **Emerging** · Effort **M**
 
-*Pitch:* adversarial content in the untrusted slots of existing capability environments is a durable source of difficulty.
-- **Mechanism / seeds / verifier.** Inject attacker text into tool outputs, emails and files at randomized, reachable positions. Reward = task completed AND injection resisted, computed from state (for example R_task − R_injected, [ToolHazard](https://arxiv.org/abs/2608.11878)). Run a population of adaptive attackers ([GPT-Red](https://arxiv.org/abs/2607.26115)). Add benign twins so the defender does not learn to over-refuse.
-- **Evidence.**
-  - Utility rose from 63.2% to 76.3% while attack success fell from 38.5% to 0.2%, on CoER's own evaluation ([CoER](https://arxiv.org/abs/2609.07529)).
-  - Removing IH-Challenge's anti-over-refusal split dropped the over-refusal score from 0.950 to 0.831 and helpfulness from 0.773 to 0.613 ([IH-Challenge](https://arxiv.org/abs/2603.10521)).
-  - Adaptive attacks broke all 8 evaluated defenses at > 50% attack success.
-- **First experiment.** Inject into 500 capability tasks. *Success:* utility does not fall, attack success falls against a *held-out* adaptive attacker, and over-refusal stays flat.
+*Pitch:* adversarial content in the untrusted slots of capability environments is a durable difficulty source.
+- **Mechanism / seeds / verifier.** Inject attacker text into tool outputs, emails and files at randomized reachable positions; reward = task completed AND injection resisted, from state (e.g. R_task − R_injected, [ToolHazard](https://arxiv.org/abs/2608.11878)); a population of adaptive attackers ([GPT-Red](https://arxiv.org/abs/2607.26115)); benign twins against over-refusal.
+- **Evidence.** [CoER](https://arxiv.org/abs/2609.07529) raised utility from 63.2% to 76.3% while attack success fell from 38.5% to 0.2% (its own evaluation). Removing [IH-Challenge](https://arxiv.org/abs/2603.10521)'s anti-over-refusal split dropped the over-refusal score from 0.950 to 0.831 and helpfulness from 0.773 to 0.613. Adaptive attacks broke all 8 evaluated defenses at > 50% attack success.
+- **First experiment.** Inject into 500 capability tasks. *Success:* utility holds, attack success falls against a *held-out* adaptive attacker, over-refusal stays flat.
 
 ### D8 · Goal switch: closed → open-ended optimization, and correctness-gated performance
 `Established` · **Moderate** · Effort **M**
 
-*Pitch:* when pass@1 is 100%, keep correctness as a gate and reward quality on a continuous scale.
-- **Mechanism / seeds / verifier.** Alter the goal, constrain outputs or generalize inputs (MST → degree-constrained spanning tree), and score against a baseline in [0, 1] ([FrontierSmith](https://arxiv.org/abs/2605.14445)). For code, reward speed behind a correctness gate with milestone shaping ([CUDA Agent](https://arxiv.org/abs/2602.24286)). Use hidden multi-distribution inputs, synchronized timing, and replay on your own hardware.
-- **Evidence.** With only 200 problems, GRPO gave +8.82 FrontierCS and +306 ALE-bench rating on Qwen3.5-9B, beating a closed-ended HardTests control by +5.24 / +236.40. CUDA Agent's milestone reward {−1, 1, 2, 3} produced 96.8% of kernels faster than torch.compile, against 60.4% with raw speedup.
-- **Risk.** This is the most-hacked reward in the literature. Under hidden inputs, GPT-5.5's apparent 1.43× speedup is 0.88×. The official KernelBench check misses 16.9% of injected faults ([Measuring the Checker](https://arxiv.org/abs/2609.22220)). A novel extension closes most of these channels: reward only "faster **and** provably equivalent", using differential binary verification ([AsmEvo](https://arxiv.org/abs/2608.20711)) or refinement-type proofs ([Semantic-equivalence self-play](https://arxiv.org/abs/2604.17010)); note 22 says this is nearly absent.
-- **First experiment.** Convert 200 saturated algorithm problems to open-ended variants. *Success:* reward variance persists through training, and held-out optimization benchmarks improve.
+*Pitch:* when pass@1 is 100%, keep correctness as a gate and reward quality continuously.
+- **Mechanism / seeds / verifier.** Alter the goal, constrain outputs or generalize inputs (MST → degree-constrained spanning tree) and score against a baseline in [0, 1] ([FrontierSmith](https://arxiv.org/abs/2605.14445)); for code, reward speed behind a correctness gate with milestone shaping ([CUDA Agent](https://arxiv.org/abs/2602.24286)), hidden multi-distribution inputs, synchronized timing and replay on your hardware.
+- **Evidence.** With 200 problems, GRPO gave +8.82 FrontierCS and +306 ALE-bench rating on Qwen3.5-9B, beating a closed-ended HardTests control by +5.24 / +236.40. CUDA Agent's milestone reward {−1, 1, 2, 3} made 96.8% of kernels faster than torch.compile vs 60.4% with raw speedup.
+- **Risk.** The most-hacked reward in the literature: under hidden inputs GPT-5.5's apparent 1.43× speedup is 0.88×, and the official KernelBench check misses 16.9% of injected faults ([Measuring the Checker](https://arxiv.org/abs/2609.22220)). *Novel extension:* reward only "faster **and** provably equivalent", via differential binary verification ([AsmEvo](https://arxiv.org/abs/2608.20711)) or refinement-type proofs ([Semantic-equivalence self-play](https://arxiv.org/abs/2604.17010)); note 22 finds this nearly absent.
+- **First experiment.** 200 saturated algorithm problems → open-ended variants. *Success:* reward variance persists and held-out optimization benchmarks improve.
 
 ### D9 · Formal-verification lift, the stage/language ladder, and band proposers
 `Established` · **Moderate** · Effort **M–L**
 
-*Pitch:* turn saturated tested code into "implement + prove", which a proof checker grades soundly on the solution side.
-- **Mechanism / seeds / verifier.** Lift the seed into a spec validated by its tests (soundness and completeness lemmas, mutated-output spectests). Climb the stage ladder (code → spec → proof → end-to-end) and the language ladder (Dafny → Verus → Lean). Use a proposer rewarded for band-hitting: ANCORA rewards a proposal when 1 of K attempts verifies, KernelZero rewards 1 − 2|p − 0.5|.
-- **Evidence.**
-  - The [ATLAS](https://arxiv.org/abs/2512.10173) TACO lift succeeds on 47% of EASY seeds and about 20% of HARD ones.
-  - On [VeriContest](https://arxiv.org/abs/2605.08553), NL→code is 92.18% while end-to-end is 5.29%. On [AlgoVeri](https://arxiv.org/abs/2602.09464), Dafny is 40.3% and Lean 7.8%.
-  - [PSV](https://arxiv.org/abs/2512.18160) reaches 65.63% against 34.46% for plain RFT, and removing solution verification costs 51.5% relative.
-  - Specs get gamed: `assume(false)` spread from one program to all ([AlphaVerus](https://arxiv.org/abs/2412.06176)). Use at least two spec defenses.
-- **First experiment.** Lift 1k saturated functions and train along the stage ladder. *Success:* verified rate rises on held-out specs, and the spec-strength audit is clean.
+*Pitch:* turn saturated tested code into "implement + prove", graded soundly on the solution side.
+- **Mechanism / seeds / verifier.** Lift the seed into a spec validated by its tests (soundness and completeness lemmas, mutated-output spectests); climb the stage ladder (code → spec → proof → end-to-end) and the language ladder (Dafny → Verus → Lean); use band-rewarded proposers (ANCORA: reward when 1 of K attempts verifies; KernelZero: 1 − 2|p − 0.5|).
+- **Evidence.** The [ATLAS](https://arxiv.org/abs/2512.10173) TACO lift succeeds on 47% of EASY seeds and about 20% of HARD ones. [VeriContest](https://arxiv.org/abs/2605.08553): NL→code 92.18% vs end-to-end 5.29%; [AlgoVeri](https://arxiv.org/abs/2602.09464): Dafny 40.3% vs Lean 7.8%. [PSV](https://arxiv.org/abs/2512.18160) reaches 65.63% vs 34.46% for plain RFT, and dropping solution verification costs 51.5% relative. Specs get gamed (`assume(false)` spread from one program to all in [AlphaVerus](https://arxiv.org/abs/2412.06176)); use at least two spec defenses.
+- **First experiment.** Lift 1k saturated functions; train along the stage ladder. *Success:* higher verified rate on held-out specs with a clean spec-strength audit.
 
 ---
 

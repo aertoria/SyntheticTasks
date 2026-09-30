@@ -164,7 +164,7 @@ Distillation is where hard synthetic problems pay off most directly in SFT. Four
 | LLM difficulty rating | Items judged hard | OpenThoughts: best code filter, +6% over random. [Llama 4](https://ai.meta.com/blog/llama-4-multimodal-intelligence/) removed more than 50% of SFT data tagged easy for Maverick and pruned 95% of SFT data for Behemoth |
 | Student already solves | Items the base model gets wrong | [ScaleDiff](https://arxiv.org/abs/2509.21070) drops problems the base model already solves (about 43% filtered) and detects "difficult" items with one forward pass of an adaptive-thinking model |
 | Weak–strong gap | Items at the edge of the student | [Phi-4-reasoning](https://arxiv.org/abs/2504.21318) |
-| Shortcut removal | Items that need reasoning | [Qwen3](https://arxiv.org/abs/2505.09388) removes cold-start queries its 72B model solves without CoT and queries that are not easily verifiable |
+| Shortcut removal | Items that need reasoning | [Qwen3](https://arxiv.org/abs/2505.09388) uses Qwen2.5-72B-Instruct to remove cold-start queries it can solve without CoT, plus queries that are not easily verifiable |
 
 Three caveats keep this from being "hardest is best". [MegaScience](https://arxiv.org/abs/2507.16812)'s difficulty selection helped only one of three sources; for the other two, no selection method beat the full set. [SWE-smith](https://arxiv.org/abs/2504.21798) SFT subsets by rated difficulty (2/4/6/8) gave 12.4/10.8/13.6/12.2% with no trend, while performance grew roughly log-linearly with the number of repositories. And OpenThoughts found 1–2 high-quality question sources beat 8–16 diverse ones. On the other side, the [OpenR1-Math-220k](https://huggingface.co/datasets/open-r1/OpenR1-Math-220k) card reports that adding the easier cn_k12 source lowered SFT performance, "likely because the questions from cn_k12 are less difficult". **Strong** for difficulty-based question selection; **Moderate** for the claim that source quality beats source count.
 
@@ -186,7 +186,7 @@ Rules. **(1) Pick the teacher by the student's result:** run 2–3 license-compa
 
 ### 3.3 Rejection sampling: what to filter and what to keep
 
-Frontier cold-start pipelines filter for form rather than for difficulty. [DeepSeek-R1](https://arxiv.org/abs/2501.12948) filtered its cold-start data "to retain only those with correct final answers and a readable format". Qwen3 removes responses with wrong final answers, heavy repetition, guesswork, thinking–summary inconsistency, language mixing, or similarity to validation items. [ResearchMath-14k](https://arxiv.org/abs/2605.28003) removes non-attempts and fabricated citations; a "committed-attempt" prompt cut non-attempts from 22% to 0%.
+Frontier cold-start pipelines filter responses for correctness and form, not for difficulty. [DeepSeek-R1](https://arxiv.org/abs/2501.12948) filtered its cold-start data "to retain only those with correct final answers and a readable format". Qwen3 removes responses with wrong final answers, heavy repetition, guesswork, thinking–summary inconsistency, language mixing, or similarity to validation items. [ResearchMath-14k](https://arxiv.org/abs/2605.28003) removes non-attempts and fabricated citations; a "committed-attempt" prompt cut non-attempts from 22% to 0%.
 
 Keep these filters unconditionally: truncation and overflow, repetition, language mixing, format violations, non-attempts, fabricated references, and near-duplicates of evaluation items. Treat answer correctness as a cheap filter to apply when a checker exists, not as a reason to drop hard items (§2.4). The evidence on failed traces is mixed, so ablate:
 
@@ -196,13 +196,13 @@ Keep these filters unconditionally: truncation and overflow, repetition, languag
 | Incorrect solutions to harder problems (code) | Beat correct solutions to easier ones | [OpenCodeReasoning](https://arxiv.org/abs/2504.01943) |
 | Unsuccessful terminal trajectories | Helped: 12.4% vs 6.74% on complete-only | [Nemotron-Terminal](https://arxiv.org/abs/2602.21193) |
 | Success-only terminal trajectories (2.3k) | Worse than a same-size mixed subset: 10.1 vs 12.4 (8B) | [Terminal-World](https://arxiv.org/abs/2605.20876) |
-| Verifier-failed cross-workspace trajectories | Hurt: 53.2 vs 55.4; on single-workspace data filtering hardly mattered (56.0 vs 56.4) | [Terminal-Universe](https://arxiv.org/abs/2609.04148) |
+| Verifier-failed cross-workspace trajectories | Hurt: 53.2 with them kept (7.1k records) vs 55.4 for the verifier-passed subset (3.5k); on single-workspace data filtering hardly mattered (56.0 vs 56.4) | [Terminal-Universe](https://arxiv.org/abs/2609.04148) |
 | Research-frontier trajectories, 3.7–4.3% judged correct | Still +2.1 on graduate/research math, behaviourally filtered | [ResearchMath-14k](https://arxiv.org/abs/2605.28003) |
 
 Two trace-construction rules have good support:
 
 - **Re-solve; don't imitate raw trajectories.** SFT on public source trajectories scored *below the base model* (36.7 vs 47.0), while re-solving the recovered intent in reconstructed environments gave 52.1 ([Terminal-Universe](https://arxiv.org/abs/2609.04148)). **Moderate.**
-- **Let the teacher see privileged information that the student does not.** Generate traces with hints, execution guidelines or the answer in the teacher's context, and train on the instruction without them. Keeping execution guidelines in the training instruction hurt (13.5 vs 15.7; [Terminal-World](https://arxiv.org/abs/2605.20876)). [STaR](https://arxiv.org/abs/2203.14465)'s rationalization (hint with the answer, train without it) is the same idea; without it the loop "eventually fails to solve any new problems". **Moderate.**
+- **Let the teacher see privileged information that the student does not.** Generate traces with hints, execution guidelines or the answer in the teacher's context, and train on the instruction without them. Keeping execution guidelines in the training instruction hurt (8B: 13.5 vs 15.7; [Terminal-World](https://arxiv.org/abs/2605.20876)). [STaR](https://arxiv.org/abs/2203.14465)'s rationalization (hint with the answer, train without it) is the same idea; without it the loop "eventually fails to solve any new problems". **Moderate.**
 
 ### 3.4 How many traces per problem
 
@@ -260,13 +260,13 @@ The literature has well-known "small curated set" results and equally solid "sca
 | | 1K synthesized samples beat LIMO and s1K on eight math benchmarks across 10 models | [MathAgent](https://arxiv.org/abs/2604.11188) |
 | | 4K examples reach 42.76% AlpacaEval 2.0 LC on LLaMA-3-8B-Base; performance saturates around 4K | [Instruct-SkillMix](https://arxiv.org/abs/2408.14774) |
 | | 1.2% of Nemotron-Terminal's data gave +4.5 on TB2.0; 11.7k SFT samples gave 29.5% on BrowseComp | [Terminal-World](https://arxiv.org/abs/2605.20876); [OpenSeeker](https://arxiv.org/abs/2603.15594) |
-| | 1.2k realistic feature-addition bugs beat 3k other bugs by 2% | [BugPilot](https://arxiv.org/abs/2510.19898) |
+| | 1.2k agent-generated BugPilot bugs (FeatAdd and BugInstruct) beat 3k other bugs by 2% | [BugPilot](https://arxiv.org/abs/2510.19898) |
 | Large | SFT of Qwen2.5-7B-Instruct on 4.77M trajectories over synthetic prompts only: AIME24 12.8 → 73.1, AIME25 8.0 → 65.6 | [PromptCoT 2.0](https://arxiv.org/abs/2509.19894) |
 | | SFT scaled from 36K to 2.2M examples | [AceReason-Nemotron 1.1](https://arxiv.org/abs/2506.13284) |
 | | Difficult 192K subset 56.6 vs all 558K 59.2 vs a random 192K 45.1 | [ScaleDiff](https://arxiv.org/abs/2509.21070) |
 | | 200k×1 unique tasks 60.3 vs 25k×8 52.5 | [X-Coder](https://arxiv.org/abs/2601.06953) |
 | | 12× the terminal tasks gave +6.4 on TB2.0 (52.0 → 58.4) | [NexForge](https://arxiv.org/abs/2607.14186) |
-| Saturation | Code instruction data plateaued after about 6M samples; synthetic math gains plateau near 300B tokens | [Genetic-Instruct](https://arxiv.org/abs/2407.21077); [SynthLLM](https://arxiv.org/abs/2503.19551) |
+| Saturation | Code instruction data plateaued after about 6M samples; synthetic math gains plateau near 300B tokens (a pretraining-scale result) | [Genetic-Instruct](https://arxiv.org/abs/2407.21077); [SynthLLM](https://arxiv.org/abs/2503.19551) |
 
 How to read these together:
 
@@ -289,8 +289,8 @@ A meta-task turns an item the model already solves into a different, harder task
 
 | Transform | Easy seed → new task | Label source | SFT evidence |
 |---|---|---|---|
-| **Critique fine-tuning** | (query, noisy response) → critique | Teacher critique; keep only critiques whose verdict matches your checker | Beat plain SFT by 4–10% on six math benchmarks. Qwen2.5-Math-CFT (50K examples, 1 hour on 8×H100) matched or beat Qwen2.5-Math-Instruct (over 2M samples) ([CFT](https://arxiv.org/abs/2501.17703)). Critiques of many solutions to *one* problem gave +15% math and +16% logic in 5 GPU hours ([one-shot CFT](https://arxiv.org/abs/2506.03295)) |
-| **Verdict-checked retry traces** | Own wrong and right attempts stitched with reflections: attempt → reflection → retry → correct | Every attempt graded; reflections kept only if their verdict is right | [SkillFactory](https://arxiv.org/abs/2512.04072): trained on easy Countdown-3arg only, then GRPO, it reached 25.1% on harder Countdown vs 21.2% for R1 distillation. Removing sample ordering or reflections cut OOD accuracy to 24.1% and 23.3% (from 32.0%). [S²R](https://arxiv.org/abs/2502.12853): 3.1k trial-and-error trajectories then RL took Qwen2.5-Math-7B from 51.0% to 81.6% on MATH500 |
+| **Critique fine-tuning** | (query, noisy response) → critique | Teacher critique; keep only critiques whose verdict matches your checker | Beat plain SFT by 4–10% on six math benchmarks. Qwen2.5-Math-CFT (50K examples, 1 hour on 8×H100) matched or beat Qwen2.5-Math-Instruct (over 2M samples) on most benchmarks ([CFT](https://arxiv.org/abs/2501.17703)). Critiques of many solutions to *one* problem gave +15% math and +16% logic in 5 GPU hours ([one-shot CFT](https://arxiv.org/abs/2506.03295)) |
+| **Verdict-checked retry traces** | Own wrong and right attempts stitched with reflections: attempt → reflection → retry → correct | Every attempt graded; reflections kept only if their verdict is right | [SkillFactory](https://arxiv.org/abs/2512.04072): trained on easy Countdown-3arg only, then GRPO, it reached 25.1% on harder Countdown vs 21.2% for R1 distillation followed by the same GRPO. Removing sample ordering or reflections cut OOD accuracy to 24.1% and 23.3% (from 32.0%). [S²R](https://arxiv.org/abs/2502.12853): 3.1k trial-and-error trajectories then RL took Qwen2.5-Math-7B from 51.0% to 81.6% on MATH500 |
 | **First-error localisation** | Correct chain → same chain with a template-compatible error at step k; output k | Prover recomputes downstream steps and checks the injected step is non-derivable | Improved Best-of-8 reranking for Llama-3.1-8B and Qwen-2.5-7B candidates ([Counterfactual PRM](https://arxiv.org/abs/2605.02395)). Use for verifiers and PRMs |
 | **Critic against a fixed generator** | Failed attempt → critique that makes a frozen generator's revision pass | Sandbox tests on the revision | [CTRL](https://arxiv.org/abs/2502.03492): SFT on execution-informed critiques, then GRPO; up to 106.1% relative improvement with iterative critique–revision |
 | **Recovery splicing (agents)** | Failing prefix → reflection → verified sibling success | Environment success | [Agent-R](https://arxiv.org/abs/2501.11425): +5.59% across three environments. [AgentRefine](https://arxiv.org/abs/2501.01702): mask the loss on the erroneous turns; masking the refinement tokens instead cut SciWorld by about 43% |
@@ -366,11 +366,11 @@ SFT still does things RL cannot. Distillation lifts the whole pass@k curve, whil
 - Small students can get worse from frontier-length traces (BREAD).
 - If the primitive is absent from pretraining, a cold start may not suffice. Mid-training plus RL beat RL-only by +10.8% on OOD-hard problems at fixed compute (Interplay). Reasoning data in pretraining gave a 19% gain that later SFT could not fully recover ([Front-Loading Reasoning](https://arxiv.org/abs/2510.03264)).
 
-InternBootcamp is the sharpest single datapoint for why the cold start matters: RL alone moved OOD by +0.7, SFT→RL by +19.5. **Strong** that a cold start is needed for hard synthetic gyms on non-reasoning bases.
+InternBootcamp is the sharpest single datapoint for why the cold start matters: RL alone moved OOD by +0.7, SFT→RL by +19.5. Chu et al. (RL without SFT failed on format) and Cognitive Behaviors (Llama needed behaviour priming) point the same way. **Moderate** that a cold start is needed for hard synthetic gyms when the base lacks the format or behaviours; where the base already has them, a cold start can hurt (Jigsaw-R1: SFT→RL 69.92 vs RL alone 73.18).
 
 ### 6.4 After RL: distil back
 
-The loop does not end at RL. [DeepSeek-R1](https://arxiv.org/abs/2501.12948) built about 800K SFT samples by rejection sampling from its RL checkpoint. [DeepSeek-V4](https://arxiv.org/abs/2606.19348) trains specialists with SFT and GRPO and then merges them by on-policy distillation into one model; [Nemotron-Cascade 2](https://arxiv.org/abs/2603.19220) uses multi-domain on-policy distillation. Two cautions:
+The loop does not end at RL. [DeepSeek-R1](https://arxiv.org/abs/2501.12948) built about 800K SFT samples by rejection sampling from its RL checkpoint. [DeepSeek-V4](https://arxiv.org/abs/2606.19348) trains specialists with SFT and GRPO and then consolidates them into one model by on-policy distillation; [Nemotron-Cascade 2](https://arxiv.org/abs/2603.19220) uses multi-domain on-policy distillation. Two cautions:
 
 - Consolidation does not add coverage. Merging, pooled RL and multi-teacher on-policy distillation differed by at most 1.4 points on average, and none beat the base model at AIME pass@32 ([Consolidating RLVR](https://arxiv.org/abs/2608.27409)).
 - Off-policy SFT forgets more. Approximately on-policy data regenerated at the start of each epoch can suffice ([Retaining by Doing](https://arxiv.org/abs/2510.18874)). In finance, ordinary SFT lowered FINESSE-Bench by 3.2–4.0 points, while self-distilled SFT raised it by 1.0–2.8 ([Hayrapetyan et al.](https://arxiv.org/abs/2609.10113)).
