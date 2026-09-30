@@ -230,70 +230,59 @@ Once atoms are saturated, composition is the most reliable source of new difficu
 
 ## 4. Theme C: Obfuscation and inversion engines
 
-These ideas keep the answer and change what the model is shown or asked. Their main risk is ambiguity, so every one of them needs a uniqueness or sufficiency check.
+These keep the answer and change what the model is shown or asked. Their main risk is ambiguity, so each needs a uniqueness or sufficiency check.
 
 ### C1 · Fuzz, densify and disperse search questions, then repair uniqueness
 `Established` · **Strong** · Effort **M**
 
 *Pitch:* turn 1–2-hop QA into questions that need long, real search.
-- **Mechanism / seeds / verifier.** Three operators on graph-derived QA with a stored gold chain:
-  - fuzz exact values (dates to ranges, numbers to arithmetic constraints);
-  - densify the topology (cycles, higher treewidth; [WebSailor-V2](https://arxiv.org/abs/2509.13305));
-  - disperse evidence so no single page covers several constraints ([REDSearcher](https://arxiv.org/abs/2602.14234)).
-
-  After every edit, enumerate candidates in the KB or by search to confirm the answer is still unique.
-- **Evidence.** In [FORT](https://arxiv.org/abs/2606.12087)'s cumulative ablation, removing its shortcut controls one at a time raises a strong agent's accuracy from 29.0% to 81.6%; fuzzing is the most important control. FORT questions needed 141.0 retrieval calls, against 20.6 for InfoSeek's "deep" trees, so accept items by trajectory signature rather than graph depth. FORT-Searcher is SFT-only and reaches BrowseComp 72.2. The labs converge on the same operators (GLM-4.5/5, MiniMax-M2, MiMo, LongCat; note 12).
-- **Effect / risk.** Much higher realized search cost per item. Risks: REDSearcher states that uniqueness checks are "not a formal guarantee", and answers on the live web drift. Snapshot the evidence.
-- **First experiment.** Harden 2k seeds. Gate each item: it must fail closed-book, be solvable from the gold pages, and pass uniqueness enumeration. *Success:* calls-to-answer and answer-hit time rise, and the audited ambiguity rate does not.
+- **Mechanism / seeds / verifier.** On graph-derived QA with a stored gold chain: fuzz exact values (dates to ranges, numbers to arithmetic constraints); densify topology (cycles, higher treewidth; [WebSailor-V2](https://arxiv.org/abs/2509.13305)); disperse evidence so no page covers several constraints ([REDSearcher](https://arxiv.org/abs/2602.14234)). After every edit, enumerate candidates in the KB or by search to confirm uniqueness.
+- **Evidence.** In [FORT](https://arxiv.org/abs/2606.12087)'s cumulative ablation, removing shortcut controls raised a strong agent's accuracy from 29.0% to 81.6%, with fuzzing the most important. FORT questions needed 141.0 retrieval calls vs 20.6 for InfoSeek's "deep" trees, so accept by trajectory signature, not graph depth. FORT-Searcher (SFT-only) reaches BrowseComp 72.2. The labs converge on the same operators (note 12).
+- **Effect / risk.** Much higher realized search cost. Risks: uniqueness checks are "not a formal guarantee" (REDSearcher), and live-web answers drift; snapshot the evidence.
+- **First experiment.** Harden 2k seeds; each must fail closed-book, be solvable from gold pages, and pass uniqueness enumeration. *Success:* calls-to-answer and answer-hit time rise without a rise in audited ambiguity.
 
 ### C2 · Direction inversion: backward math and abductive/inductive code
 `Established` · **Moderate** · Effort **S–M**
 
 *Pitch:* one verified artifact yields harder inverse tasks.
-- **Mechanism / seeds / verifier.**
-  - *Math:* mask a given and ask for it from the answer ([MetaMath](https://arxiv.org/abs/2309.12284) FOBAR/SV; "if the answer is 42, what is z?", [2605.28388](https://arxiv.org/abs/2605.28388)).
-  - *Code:* ask for an input that yields a given output (abduction) or for the function from its I/O pairs (induction) ([Absolute Zero](https://arxiv.org/abs/2505.03335)), or ask for tests that separate right from wrong code ([CURE](https://arxiv.org/abs/2506.03136)).
-
-  Execution grades every answer. For math inversions, brute-force the domain to enforce a unique answer. The trailing-zeros inversion has five solutions (100–104), so the question must ask for the smallest.
-- **Evidence.** Adding 20K MetaMath samples gave +2.3 (FOBAR) and +2.6 (SV) GSM8K points, against +0.4 for rephrasing. Caveats: inverse physics questions transferred less than forward ones (5.84 vs 13.15 IPhO; [Sim2Reason](https://arxiv.org/abs/2604.11805)), and AZR-style self-play mostly sharpens (note 09).
-- **Effect / risk.** Variety and backward reasoning; risk of non-unique answers.
-- **First experiment.** Invert 1k seeds with uniqueness enforcement and add them as ≤ 30% of the mix. *Success:* higher in-band yield and no loss in forward accuracy.
+- **Mechanism / seeds / verifier.** *Math:* mask a given and ask for it from the answer ([MetaMath](https://arxiv.org/abs/2309.12284) FOBAR/SV; "if the answer is 42, what is z?", [2605.28388](https://arxiv.org/abs/2605.28388)); brute-force the domain for uniqueness (the trailing-zeros inversion has five solutions, 100–104, so ask for the smallest). *Code:* abduction (input for a given output), induction (function from I/O) ([Absolute Zero](https://arxiv.org/abs/2505.03335)), or tests that separate right from wrong code ([CURE](https://arxiv.org/abs/2506.03136)); execution grades.
+- **Evidence.** 20K added MetaMath samples gave +2.3 (FOBAR) and +2.6 (SV) GSM8K points vs +0.4 for rephrasing. Caveats: inverse physics questions transferred less than forward ones (5.84 vs 13.15 IPhO, [Sim2Reason](https://arxiv.org/abs/2604.11805)), and AZR-style self-play mostly sharpens (note 09).
+- **First experiment.** Invert 1k seeds with uniqueness enforcement as ≤ 30% of the mix. *Success:* higher in-band yield, no loss in forward accuracy.
 
 ### C3 · Static → interactive: put the parameters behind tools
 `Established` (recent) · **Emerging** · Effort **M**
 
 *Pitch:* keep a solved instance but make the model acquire its facts.
-- **Mechanism / seeds / verifier.** Pre-solve the instance, expose its parameters only through query tools, and grade arithmetically ([VHD-Play](https://arxiv.org/abs/2609.27321); [CodeGym](https://arxiv.org/abs/2509.17325), which requires 10–256 tool calls; [KUMO](https://arxiv.org/abs/2504.02810), a SAT-backed hidden-state game).
-- **Evidence.** The same solved instances score 0.962 when written out and 0.204 when the parameters sit behind tools (VHD-Play).
-- **Effect / risk.** A large drop in pass rate at zero labelling cost. Risk: the task becomes tedious rather than harder; also score efficiency against an optimal searcher.
-- **First experiment.** Agentify 5 saturated procedural families. *Success:* the band is restored, and tool-use benchmarks improve.
+- **Mechanism / seeds / verifier.** Pre-solve, expose parameters only through query tools, grade arithmetically ([VHD-Play](https://arxiv.org/abs/2609.27321); [CodeGym](https://arxiv.org/abs/2509.17325), 10–256 tool calls; [KUMO](https://arxiv.org/abs/2504.02810), SAT-backed hidden-state games).
+- **Evidence.** The same solved instances score 0.962 written out and 0.204 behind tools (VHD-Play).
+- **Effect / risk.** Large pass-rate drop at zero labelling cost. Risk: tedium rather than difficulty; also score efficiency against an optimal searcher.
+- **First experiment.** Agentify 5 saturated procedural families. *Success:* band restored and tool-use benchmarks improve.
 
 ### C4 · Shard the instruction or hide the spec behind a user, with a CONCAT control
 `Established` · **Moderate** · Effort **M**
 
 *Pitch:* same label, harder delivery.
-- **Mechanism / seeds / verifier.** Split a fully specified task into shards revealed one per turn, or move information into a simulated user who answers only what the spec contains. Reuse the original verifier. Drop any item whose CONCAT view (all shards in one turn) fails, and add an explicit reward for asking or abstaining.
-- **Evidence.** SHARDED delivery loses 39% on average across 15 LLMs, while CONCAT keeps 95.1% of FULL ([Lost in Conversation](https://arxiv.org/abs/2505.06120)). A shard curriculum gated at ρ = 0.8 reached 71.9 LiC in 90 steps, against 63.2 with no curriculum and 40.9 at ρ = 0.6 ([RLAAR](https://arxiv.org/abs/2510.18731)). Removing information categories from SWE-bench Verified issues drops resolution from 43.8% to 23.7%, and learned clarification recovers 36.8% with 3.0 questions ([CLARITI](https://arxiv.org/abs/2604.14624)).
-- **Effect / risk.** Brings back GRPO variance on saturated seeds. Risks: the simulator leaks the spec and the task quietly becomes easy again; degenerate always-ask or always-abstain policies. Cap unsolvable variants (RLAAR m = 0.1).
-- **First experiment.** Shard 2k saturated tasks and train with the ρ = 0.8 curriculum. *Success:* the sharded/full ratio improves with no single-turn regression.
+- **Mechanism / seeds / verifier.** Reveal a fully specified task one shard per turn, or move information into a simulated user who answers only from the spec; reuse the original verifier; drop items whose CONCAT view (all shards in one turn) fails; add an explicit reward for asking or abstaining.
+- **Evidence.** SHARDED loses 39% on average across 15 LLMs while CONCAT keeps 95.1% of FULL ([Lost in Conversation](https://arxiv.org/abs/2505.06120)). A shard curriculum gated at ρ = 0.8 reached 71.9 LiC in 90 steps, vs 63.2 without curriculum and 40.9 at ρ = 0.6 ([RLAAR](https://arxiv.org/abs/2510.18731)). Removing information categories from SWE-bench Verified issues drops resolution from 43.8% to 23.7%; learned clarification recovers 36.8% with 3.0 questions ([CLARITI](https://arxiv.org/abs/2604.14624)).
+- **Effect / risk.** Restores GRPO variance on saturated seeds. Risks: simulator leakage makes the task easy again; degenerate always-ask or always-abstain policies; cap unsolvable variants (RLAAR m = 0.1).
+- **First experiment.** Shard 2k saturated tasks; train with the ρ = 0.8 curriculum. *Success:* sharded/full ratio improves with no single-turn regression.
 
 ### C5 · Counterfactual rules and worlds
 `Established` (evaluation) / `Extension` (training) · **Emerging** · Effort **S**
 
-*Pitch:* change the semantics of the world so that the model's priors mislead it.
-- **Mechanism / seeds / verifier.** Represent the seed as a symbolic program and mutate a rule in code: base-9 arithmetic ([Reasoning or Reciting](https://arxiv.org/abs/2307.02477)), reinterpreted operators ([MatheMagic](https://arxiv.org/abs/2510.05962)), knights who lie, new Sudoku interactions ([Sudoku-Bench](https://arxiv.org/abs/2505.16135): SOTA solves < 15% unaided). Execute to get the new answer.
-- **Evidence.** Strong as an evaluation operator; little evidence yet as training data.
-- **Effect / risk.** Stresses whether the model reads the rules or recites a memorized procedure. Risk: overfitting to the "counterfactual" style.
-- **First experiment.** Build counterfactual twins of 3 procedural families. *Success:* held-out counterfactual accuracy rises with no drop on the standard versions.
+*Pitch:* change the world's semantics so priors mislead.
+- **Mechanism / seeds / verifier.** Represent the seed as a symbolic program, mutate a rule in code, execute for the new answer: base-9 arithmetic ([Reasoning or Reciting](https://arxiv.org/abs/2307.02477)), reinterpreted operators ([MatheMagic](https://arxiv.org/abs/2510.05962)), knights who lie, new Sudoku interactions ([Sudoku-Bench](https://arxiv.org/abs/2505.16135): SOTA solves < 15% unaided).
+- **Evidence / risk.** Strong as an evaluation operator; little evidence as training data. Risk: overfitting to a "counterfactual" style.
+- **First experiment.** Counterfactual twins of 3 procedural families. *Success:* held-out counterfactual accuracy rises with no drop on standard versions.
 
 ### C6 · Fictional-world grounding and answer-source removal
 `Established` · **Moderate** · Effort **M**
 
-*Pitch:* the answer exists only in a world or database the model cannot have memorized.
-- **Mechanism / seeds / verifier.** Generate a self-consistent fictional DB or wiki and compute answers by SQL or Prolog ([PhantomWiki](https://arxiv.org/abs/2502.20377)). Or delete the answer's source page from the corpus ([LiteResearcher](https://arxiv.org/abs/2604.17931)) and re-verify that the answer is still reachable (solver pass rate between 1/8 and 7/8).
-- **Evidence.** Fictional SQL-backed worlds gave +16.29 WideSearch item-F1 ([Qwen-AgentWorld](https://arxiv.org/abs/2606.24597)). GRPO on PhantomWiki gave Qwen3-0.6B relative F1 gains of 56–131% on five real multi-hop benchmarks. [SynthWorlds](https://arxiv.org/abs/2510.24427) documents the parametric "knowledge advantage gap" that this operator removes.
+*Pitch:* the answer exists only in a world the model cannot have memorized.
+- **Mechanism / seeds / verifier.** A self-consistent fictional DB or wiki with answers computed by SQL or Prolog ([PhantomWiki](https://arxiv.org/abs/2502.20377)); or delete the answer's source page ([LiteResearcher](https://arxiv.org/abs/2604.17931)) and re-verify reachability (solver pass rate between 1/8 and 7/8).
+- **Evidence.** Fictional SQL-backed worlds gave +16.29 WideSearch item-F1 ([Qwen-AgentWorld](https://arxiv.org/abs/2606.24597)); GRPO on PhantomWiki gave Qwen3-0.6B relative F1 gains of 56–131% on five real multi-hop benchmarks. [SynthWorlds](https://arxiv.org/abs/2510.24427) documents the parametric "knowledge advantage gap" this removes.
 - **Effect / risk.** Contamination-free, regenerable RL data. Risk: templated worlds are repetitive; measure diversity (I4).
-- **First experiment.** Regenerate a fictional world every epoch. *Success:* gains on real multi-hop and search benchmarks.
+- **First experiment.** Regenerate the world every epoch. *Success:* gains on real multi-hop and search benchmarks.
 
 ---
 
@@ -435,71 +424,47 @@ Build these once static operators stop filling the band. They follow the stabili
 
 ## 7. Theme F: Verification infrastructure
 
-Harder tasks raise both label error and hackability ([Chapter 04](04-verification-and-quality-control.md), [Chapter 09](09-pitfalls-and-failure-modes.md)). This infrastructure is what makes Themes A–E safe.
+Harder tasks raise both label error and hackability ([Chapter 04](04-verification-and-quality-control.md), [Chapter 09](09-pitfalls-and-failure-modes.md)); this infrastructure makes Themes A–E safe.
 
 ### F1 · A task-bundle contract with CI gates
 `Established` · **Strong** · Effort **S**
 
 *Pitch:* no task enters a pool without an oracle, a self-scoring test and known-bad candidates.
-- **Mechanism.** Use the [Harbor](https://docs.harborframework.com/core-concepts/tasks/overview) layout: `instruction.md`, `task.toml`, `environment/Dockerfile`, `solution/solve.sh`, and `tests/test.sh` writing `/logs/verifier/reward.txt`. CI checks five things:
-  - the oracle passes in a fresh sandbox;
-  - a no-op fails;
-  - known-bad candidates fail;
-  - checkers are hidden from proposers and agents;
-  - a forbidden-pattern scan comes back clean.
-- **Evidence.** [CUA-Gym](https://arxiv.org/abs/2605.25624) requires reward(golden) = 1 and reward(initial) = 0, with the checker written behind an information barrier. Its models reach 62.1 / 72.6 on OSWorld-Verified. [Self-Challenging](https://arxiv.org/abs/2506.01716) ships a known-good solution and failure cases with every task. An empty-response agent passes 38% of τ-bench-Airline ([ABC](https://arxiv.org/abs/2507.02825)). In the Darwin Gödel Machine, objective hacking was more frequent when checkers were visible (note 14).
-- **First experiment.** Convert the pool and report the failure rate per gate. *Success:* every accepted task passes the contract, and you document how much the pass-rate profile shifted.
+- **Mechanism.** The [Harbor](https://docs.harborframework.com/core-concepts/tasks/overview) layout (`instruction.md`, `task.toml`, `environment/Dockerfile`, `solution/solve.sh`, `tests/test.sh` → `/logs/verifier/reward.txt`). CI: oracle passes in a fresh sandbox; no-op fails; known-bad candidates fail; checkers hidden from proposers and agents; clean forbidden-pattern scan.
+- **Evidence.** [CUA-Gym](https://arxiv.org/abs/2605.25624) requires reward(golden) = 1 and reward(initial) = 0 with the checker written behind an information barrier; its models reach 62.1 / 72.6 on OSWorld-Verified. [Self-Challenging](https://arxiv.org/abs/2506.01716) ships a known-good solution and failure cases with every task. An empty-response agent passes 38% of τ-bench-Airline ([ABC](https://arxiv.org/abs/2507.02825)). In the Darwin Gödel Machine, objective hacking was more frequent when checkers were visible (note 14).
+- **First experiment.** Convert the pool; report failure rate per gate. *Success:* every accepted task passes the contract, and the shift in the pass-rate profile is documented.
 
 ### F2 · A pre-RL red-team harness, including a public/hidden verifier split
 `Established` (components) · **Moderate** · Effort **M**
 
 *Pitch:* attack every operator family before training on it.
-- **Mechanism.**
-  - A hacker–fixer–solver loop ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)).
-  - Trivial-agent baselines and planted canaries.
-  - Impossible variants with an abort option ([ImpossibleBench](https://arxiv.org/abs/2510.20270)).
-  - Isomorphic-renamed twins, rewarded only if both are correct ([IPT](https://arxiv.org/abs/2604.15149)).
-  - Truncated "master key" negatives for judges.
-  - Read-only, checksummed tests.
-  - A public diagnostic verifier with hidden scoring under a submission budget ([Kimi K3](https://arxiv.org/abs/2607.24653)).
-- **Evidence.**
-  - 323 of 1,968 terminal tasks (16%) were hackable from the description alone. The hacker–fixer loop cut attack success on KernelBench from 76% and 61% to 0%.
-  - GPT-5 exploited tests in 54–76% of impossible SWE-bench variants, and an abort option cut that from 54% to 9%.
-  - RLVR models found 40 shortcuts at complexity levels 1–10 and 458 at levels 11–20.
-  - Monitors still miss about 35–58% of cheating on complex SWE variants.
-- **First experiment.** Run the harness on 200 tasks per operator family. *Success:* after fixes, the exploit rate per family is near zero and the solver still passes.
+- **Mechanism.** Hacker–fixer–solver loop ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)); trivial-agent baselines and planted canaries; impossible variants with an abort option ([ImpossibleBench](https://arxiv.org/abs/2510.20270)); isomorphic-renamed twins rewarded only if both are right ([IPT](https://arxiv.org/abs/2604.15149)); truncated "master key" negatives for judges; read-only checksummed tests; a public diagnostic verifier with hidden scoring under a submission budget ([Kimi K3](https://arxiv.org/abs/2607.24653)).
+- **Evidence.** 323 of 1,968 terminal tasks (16%) were hackable from the description alone, and the loop cut attack success on KernelBench from 76% and 61% to 0%. GPT-5 exploited tests in 54–76% of impossible SWE-bench variants; an abort option cut this from 54% to 9%. RLVR models found 40 shortcuts at complexity levels 1–10 vs 458 at 11–20. Monitors still miss about 35–58% of cheating on complex SWE variants.
+- **First experiment.** Harness 200 tasks per operator family. *Success:* post-fix exploit rate near zero with the solver still passing.
 
 ### F3 · A decorrelated verification portfolio with J tracking
 `Established` · **Moderate** · Effort **M**
 
-*Pitch:* hard items need evidence from channels that fail in different ways.
-- **Mechanism.** Combine execution, small-input brute force, a verifier from a different model family and, where possible, a formal kernel. Measure TPR and FPR per channel per difficulty decile on a gold-labelled subset.
-- **Evidence.**
-  - When J = TPR − FPR > 0, incorrect modes die out; when J < 0, they grow ([RLVεR](https://arxiv.org/abs/2601.04411)).
-  - Verifier errors within a group correlate at 0.53, so 8 completions are worth about 1.70 independent votes.
-  - Cross-family channels carried marginal information gain of 0.0913, against 0.0126 for same-model repeats ([VStress](https://arxiv.org/abs/2609.36958)).
-  - Unverified majority answers are wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 ([T³RL](https://arxiv.org/abs/2603.02203)).
-  - Under count-matched RFT, admitting 25% false positives costs 1.58 pp, while discarding 75% of true positives costs only 0.03 pp (note 22). Tune gates for precision.
-- **First experiment.** Label 300 hard items stratified by difficulty. *Success:* the portfolio's J on the hardest decile clearly exceeds that of the best single channel.
+*Pitch:* hard items need evidence from channels that fail differently.
+- **Mechanism.** Execution, small-input brute force, a verifier from another model family and, where possible, a formal kernel; measure TPR and FPR per channel per difficulty decile on a gold-labelled subset.
+- **Evidence.** With J = TPR − FPR > 0 incorrect modes die out; with J < 0 they grow ([RLVεR](https://arxiv.org/abs/2601.04411)). Within-group verifier errors correlate at 0.53, so 8 completions are worth about 1.70 independent votes; cross-family channels add 0.0913 marginal information vs 0.0126 for same-model repeats ([VStress](https://arxiv.org/abs/2609.36958)). Unverified majority answers are wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 ([T³RL](https://arxiv.org/abs/2603.02203)). Under count-matched RFT, admitting 25% false positives costs 1.58 pp while discarding 75% of true positives costs 0.03 pp (note 22): tune gates for precision.
+- **First experiment.** 300 gold-labelled hard items stratified by difficulty. *Success:* portfolio J on the hardest decile clearly exceeds the best single channel.
 
 ### F4 · Two-sided (privileged-information) solvability gates
 `Established` · **Strong** · Effort **S**
 
 *Pitch:* separate "hard" from "broken" before a p ≈ 0 item enters training.
-- **Mechanism.** Admit an item only if it becomes solvable with privileged information (a hint, gold evidence, a stronger teacher, or large k) and stays unsolved without it.
-- **Evidence.**
-  - Hint-conditioned admission ([CLI-Universe](https://arxiv.org/abs/2606.22883)); pass@100 > 0 ([DeepSeek-V3.2](https://arxiv.org/abs/2512.02556)); pass@8 = 0 with pass@512 ≫ 0, drawn from a verified-answer pool ([GLM-4.5](https://arxiv.org/abs/2508.06471)).
-  - Of 79 EvoEnv environments that passed all mechanical layers, a stronger auditor judged 35 buggy ([EvoEnv](https://arxiv.org/abs/2605.14392)).
-  - [HLE-Verified](https://arxiv.org/abs/2602.13964) kept only 668 of 2,500 items unchanged.
-- **First experiment.** Gate the current p = 0 tail and hand-audit 100 accepts and 100 rejects. *Success:* rejects are mostly broken, and label error among accepts is low.
+- **Mechanism.** Admit only if solvable with privileged information (hint, gold evidence, stronger teacher, large k) and unsolved without it.
+- **Evidence.** Hint-conditioned admission ([CLI-Universe](https://arxiv.org/abs/2606.22883)); pass@100 > 0 ([DeepSeek-V3.2](https://arxiv.org/abs/2512.02556)); pass@8 = 0 with pass@512 ≫ 0 from a verified-answer pool ([GLM-4.5](https://arxiv.org/abs/2508.06471)). Of 79 [EvoEnv](https://arxiv.org/abs/2605.14392) environments passing all mechanical layers, a stronger auditor judged 35 buggy; [HLE-Verified](https://arxiv.org/abs/2602.13964) kept only 668 of 2,500 items unchanged.
+- **First experiment.** Gate the current p = 0 tail; hand-audit 100 accepts and 100 rejects. *Success:* rejects mostly broken, accepts low in label error.
 
 ### F5 · Solver-backed label-preservation certificates outside math
 `Novel` · **Proposal** · Effort **M**
 
 *Pitch:* certify that a rewrite kept the label by editing in an executable IR, not by asking an LLM.
-- **Mechanism.** Lift the seed into a program, SQL query, state machine or tool trace. Apply the operator there (shard, obfuscate, abstract), re-render, and certify by re-execution equivalence plus cycle consistency. Check sufficiency with a QuestBench-style solver.
-- **Why novel.** [Lost in Conversation](https://arxiv.org/abs/2505.06120) needed 1–4 hours of manual work per task, and CLARITI validated 50 of 1,500 rewrites. MQR and SvS audit preservation with LLMs. Note 21 lists solver-backed CONCAT equivalence and shard-necessity checks for code, SQL and tool tasks as missing. The math analogue works: MathCAMPS cycle consistency judged 97.7% of survivors faithful.
-- **First experiment.** Compare IR-certified with LLM-audited rewrites on 500 SQL-backed tool tasks, using a hand audit as ground truth. *Success:* lower label error at equal yield.
+- **Mechanism.** Lift the seed into a program, SQL query, state machine or tool trace; apply the operator there (shard, obfuscate, abstract); re-render; certify by re-execution equivalence plus cycle consistency; check sufficiency with a QuestBench-style solver.
+- **Why novel.** [Lost in Conversation](https://arxiv.org/abs/2505.06120) needed 1–4 hours of manual work per task, CLARITI validated 50 of 1,500 rewrites, and MQR and SvS audit preservation with LLMs. Note 21 lists solver-backed CONCAT equivalence and shard-necessity checks for code, SQL and tool tasks as missing; the math analogue works (MathCAMPS cycle consistency: 97.7% of survivors faithful).
+- **First experiment.** IR-certified vs LLM-audited rewrites on 500 SQL-backed tool tasks, hand audit as ground truth. *Success:* lower label error at equal yield.
 
 ---
 

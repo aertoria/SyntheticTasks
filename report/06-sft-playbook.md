@@ -108,12 +108,13 @@ def evolve_for_sft(seeds, operators, dev_eval, max_rounds=3, words_per_step=20):
         cand = decontaminate(dedup(cand, tau=0.9))
         cand = diversity_select(cand, ref=pool)
         overshoot = [c for c in cand if teacher_fails(c)]   # route down, don't drop
-        rungs.append([c for c in cand if c not in overshoot])
-        pool += rungs[-1] + soften(overshoot)
-        score = dev_eval(train_sft(pool))     # short SFT; dev set disjoint from final evals
-        if score <= best + noise_margin: break  # the "Evol stop"
-        best = score
-    return pool                               # all rungs, not just the top one
+        new_rung = [c for c in cand if c not in overshoot]
+        trial = pool + new_rung + soften(overshoot)
+        score = dev_eval(train_sft(trial))    # short SFT; dev set disjoint from final evals
+        if score <= best + noise_margin: break  # the "Evol stop": discard the non-improving round
+        pool, best = trial, score
+        rungs.append(new_rung)
+    return pool                               # all accepted rungs, not just the top one
 ```
 
 ### 2.4 How much answer verification SFT needs
@@ -396,13 +397,13 @@ Hardened synthetic data should not be the whole SFT mix. Most blend evidence com
 | Component | Starting share | Evidence |
 |---|---|---|
 | Hardened synthetic items, equal across operator families | The remainder | In RL, no adaptive mixture beat a fixed equal mix across 12 matched seeds ([DataFlex-RL](https://arxiv.org/abs/2609.06107)); untested for SFT. **Proposal** |
-| Real or seed items with trusted answers | 20–33% | Seed+synthetic 57.3 > seed-only 49.7 > synthetic-only 46.8 on LiveCodeBench at 7B ([rStar-Coder](https://arxiv.org/abs/2505.21297)). In pretraining, 1/3 rephrased + 2/3 natural text reached the same loss 5–10× faster, and good rephrased ratios converged to about 30% ([Kang et al.](https://arxiv.org/abs/2510.01631)). Mixing ResearchMath (77K) with DASD (50K) beat token-matched DASD by +0.8 to +5.7 across four benchmark groups. **Moderate** |
+| Real or seed items with trusted answers | 20–33% | Seed+synthetic 57.3 > seed-only 49.7 > synthetic-only 46.8 on LiveCodeBench at 7B ([rStar-Coder](https://arxiv.org/abs/2505.21297)). In RL, mixing 20% real reference bugs into fixer training (plus a similarity-to-real reward) gave +7.0 pp over unanchored self-play ([Anchored Self-Play](https://arxiv.org/abs/2607.03523)). In pretraining, 1/3 rephrased + 2/3 natural text reached the same loss 5–10× faster, and good *rephrased* (synthetic) ratios converged to about 30% ([Kang et al.](https://arxiv.org/abs/2510.01631)); that result argues for a natural-text majority in pretraining, so it bounds the synthetic share rather than supporting a small real share. A related blend result, though not a trusted-answer anchor: mixing mostly unverified ResearchMath trajectories (77K) with DASD (50K) beat token-matched DASD by +0.8 to +5.7 across four benchmark groups. **Moderate** that a real anchor helps; the 20–33% share itself is our synthesis (**Proposal**) |
 | General instruction data for untargeted skills | Enough to hold the regression suite flat | Math-only SFT cut IFEval from 69.2 to 42.3 (Huan et al.). Uniform-format synthetic QA (2% of 300B continued-pretraining tokens) lowered FollowBench HSR from 27.58 to 24.00 after SFT; unlearning restored 27.87 ([Chen et al.](https://arxiv.org/abs/2406.12397)). [Conifer](https://arxiv.org/abs/2404.02823) mixed 13,606 hard conversations with 53K ShareGPT. **Moderate** |
 | Meta-task slices (§5) | 10–20% | **Proposal** |
 | Rewrites per seed | ≤ 10 | At fixed size, few-seed rewriting (from 999 rewrites of 0.1% of GSM8K down to 9 rewrites of 10%) lost diversity, and diversity tracked downstream SFT accuracy ([Fidelity–Diversity](https://arxiv.org/abs/2607.04563)). **Moderate** |
-| Generator and teacher families | 2–3, from different model series | Judge preference leakage: 23.6% when the judge generated the data vs 2.8% across series, and SFT leaks most (23.6% vs 5.2% for DPO) ([Preference Leakage](https://arxiv.org/abs/2502.01534)). Students SFT'd on different teachers are 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)). **Moderate** |
+| Generator and teacher families | 2–3, from different model series | Judge preference leakage: 23.6% when the judge generated the data vs 2.8% for a same-family judge from a different series, and SFT leaks most (23.6% vs 5.2% for DPO) ([Preference Leakage](https://arxiv.org/abs/2502.01534)). Students SFT'd on different teachers are 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)). **Moderate** |
 
-**Mix difficulties; don't stage them.** A mixed single-stage schedule beat two-stage curricula for terminal SFT ([Nemotron-Terminal](https://arxiv.org/abs/2602.21193)). [Mordig et al.](https://arxiv.org/abs/2603.27226) found no robust gain from easy→hard ordering for SFT or RL. Tree-Instruct's hard-only set beat its curriculum, and Conifer's easy→hard multi-turn packaging gained only 1–2 points in a single run. Keep the whole difficulty ladder in the mix (§2.3); ordering is second-order. **Moderate.**
+**Mix difficulties; don't stage them.** A mixed single-stage schedule beat two-stage curricula for terminal SFT ([Nemotron-Terminal](https://arxiv.org/abs/2602.21193)). [Mordig et al.](https://arxiv.org/abs/2603.27226) found no robust gain from easy→hard ordering for SFT or RL on deductive reasoning tasks. Tree-Instruct's hard-only set beat its curriculum, and Conifer's easy→hard multi-turn packaging gained only 1–2 points in a single run. Keep the whole difficulty ladder in the mix (§2.3); ordering is second-order. **Moderate.**
 
 **Run a dose ladder before scaling.** Size regimes are in §4. Per operator family, train at 1k / 4k / 16k / 64k items with at least 3 seeds each, and stop where the held-out curve flattens. Instruct-SkillMix saturated at about 4K and Genetic-Instruct at about 6M, so the knee differs by orders of magnitude between elicitation and distillation. **Proposal.**
 
