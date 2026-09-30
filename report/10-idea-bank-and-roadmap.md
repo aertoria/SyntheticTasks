@@ -37,7 +37,7 @@
 
 ## 1. How to use this chapter
 
-This chapter turns the rest of the report into build items. The diagnosis (is the task really easy, or is the verifier broken?) is in [Chapter 01](01-diagnosis-difficulty-and-learning-signal.md). The operator catalogue is in [Chapter 02](02-complexification-operator-taxonomy.md), pipelines in [Chapter 03](03-generation-architectures.md) and verifier engineering in [Chapter 04](04-verification-and-quality-control.md). Training recipes are in [Chapter 05](05-rl-playbook.md) (RL) and [Chapter 06](06-sft-playbook.md) (SFT), per-domain recipes in [07a](07a-domain-recipes-reasoning.md) and [07b](07b-domain-recipes-agents-and-beyond.md), lab practice in [Chapter 08](08-frontier-lab-practices.md) and failure modes in [Chapter 09](09-pitfalls-and-failure-modes.md). The ideas below cite evidence and do not repeat those chapters.
+This chapter turns the report into build items and does not repeat the background: diagnosis ([01](01-diagnosis-difficulty-and-learning-signal.md)), operators ([02](02-complexification-operator-taxonomy.md)), pipelines ([03](03-generation-architectures.md)), verifiers ([04](04-verification-and-quality-control.md)), RL ([05](05-rl-playbook.md)), SFT ([06](06-sft-playbook.md)), domains ([07a](07a-domain-recipes-reasoning.md), [07b](07b-domain-recipes-agents-and-beyond.md)), labs ([08](08-frontier-lab-practices.md)) and failure modes ([09](09-pitfalls-and-failure-modes.md)).
 
 **Tags used on every idea.**
 
@@ -54,7 +54,7 @@ This chapter turns the rest of the report into build items. The diagnosis (is th
 ```
 verified seed ──► operator(s) ──► candidate task bundle
                                      │ G0 contract: oracle passes, no-op fails, known-bad fails  (§7 F1)
-                                     │ G1 two-sided gate: solvable with privileged info, not without (F5)
+                                     │ G1 two-sided gate: solvable with privileged info, not without (F4)
                                      │ G2 shortcut probes: no-CoT / no-context / tool-free / trivial agent (A4)
                                      │ G3 pilot band on the CURRENT policy: keep 0<p<1, aim ≈0.3–0.6 (G4)
                                      │ G4 dedup + skill-level signature, lineage log, per-operator yield (I3, I4)
@@ -83,7 +83,7 @@ These nine ideas reuse the checker you already have, so labels are free and the 
   - With [HardTests](https://arxiv.org/abs/2505.24098), precision on AtCoder 4+ rose from 21.67 (TACO tests) to 60.00, and RL reached pass@10 64.76 vs 57.14.
   - Verifiers also err the other way. Rule-based math checkers average 86% recall ([Rule vs model verifiers](https://arxiv.org/abs/2505.22203)).
 - **Effect / risk.** Items the policy was passing by exploit get their variance back. Risk: new tests that reject correct code. Keep a test only if every known-correct reference passes it, and track TPR and TNR (≥ 0.9, per note 11).
-- **First experiment.** Take 200 items at p̂ = 1 and 200 at p̂ = 0. Harden the tests of the first group and re-check the second with a model fallback. *Success:* report the share of "saturated" items whose p̂ drops into (0, 1) and the share of "impossible" items that were false negatives. New tests must reach TPR ≥ 0.9 on the references.
+- **First experiment.** Harden tests on 200 items at p̂ = 1; re-check 200 at p̂ = 0 with a model fallback. *Success:* report the share of "saturated" items that re-enter (0, 1) and of "impossible" items that were false negatives, with new tests at TPR ≥ 0.9.
 
 ### A2 · Answer-preserving stem hardening
 `Established` · **Moderate** · Effort **S**
@@ -110,7 +110,7 @@ These nine ideas reuse the checker you already have, so labels are free and the 
   - [Big-Math](https://arxiv.org/abs/2502.17387)-Reformulated skews harder: more than 50% of its items fall in the two hardest solve-rate quintiles.
   - Labs convert or drop MCQ as routine practice (note 12).
   - [ScaleBox](https://arxiv.org/abs/2604.27467) found that 14.57% of 34,757 code problems need special judges, and that exact match rejects 59.01% of correct solutions to them. The best generated judges reach TPR/TNR 96.3/88.5.
-- **Effect / risk.** Removes easy guessing and false negatives. Risk: free-form answers need a stronger verifier. A Qwen2.5-72B judge gave up to 67% false positives on "master key" answers until it was trained on truncated-response negatives ([Master-RM](https://arxiv.org/abs/2507.08794)). Open-ended conversion failed for masked-span MCQ (>83% zero accuracy in [Golden Goose](https://arxiv.org/abs/2601.22975)).
+- **Effect / risk.** Removes guessing and false negatives. Risk: free-form answers need a stronger verifier; a Qwen2.5-72B judge gave up to 67% false positives on "master key" answers ([Master-RM](https://arxiv.org/abs/2507.08794)). For masked-span items, open-ended conversion failed (>83% zero accuracy, [Golden Goose](https://arxiv.org/abs/2601.22975)).
 - **First experiment.** Convert the MCQ slice, re-verify that each answer is unique, and test the checker metamorphically on equivalent rewrites of each answer. *Success:* chance-level accuracy from option-only baselines, and a verifier false-positive rate below 1% on the metamorphic set.
 
 ### A4 · Shortcut and no-context filters as a pre-pass
@@ -155,7 +155,7 @@ These nine ideas reuse the checker you already have, so labels are free and the 
   - WTM scores fall monotonically from Level 1 to Level 3.
   - Information removal cut solve rates by 70–100 points in Trading Human Curation.
 - **Effect / risk.** Large, cheap drops in pass rate. Risk: an underspecified task is ambiguous rather than hard; FrogNano got 0% from a missing contract ([FrogNano](https://arxiv.org/abs/2609.07925)). Enforce RST's *contract validity*: every checked property must be stated or discoverable ([RST](https://arxiv.org/abs/2608.05466)). Keep the detailed twin so you can tell specification gaps from capability gaps.
-- **First experiment.** For 300 saturated agent tasks, build three rungs (full, abstract, minimal). Check that a strong reference agent still solves the minimal rung from the workspace, then profile the policy. *Success:* ≥ 1 rung per task is in band, and the reference agent's success rate on the minimal rung stays within a few points of the full rung.
+- **First experiment.** Build three rungs (full, abstract, minimal) for 300 saturated agent tasks and profile the policy. *Success:* ≥ 1 rung per task is in band, while a strong reference agent's success on the minimal rung stays within a few points of the full rung.
 
 ### A7 · Failure-prefix conditioning for saturated items
 `Established` (one study) · **Emerging** · Effort **S**
@@ -264,7 +264,7 @@ When atoms are saturated, composition is the most reliable way to get new diffic
   - X-Coder: 64k tasks × 1 solution beat 16k × 4.
   - X-Coder's residual label error before deterministic filtering was 12.7%, and 94% of it came from one mechanically detectable pattern.
   - [rStar-Coder](https://arxiv.org/abs/2505.21297)'s mutual verification gave 96.8% output-label accuracy, against 12.7% for GPT-4o-written outputs.
-  - In AutoCode, difficulty gain correlated with human-rated quality at up to 0.60, while o3–human agreement on quality was 0.07.
+  - In AutoCode, measured difficulty gain tracked human-rated quality (up to 0.60); o3–human agreement on quality was 0.07.
 - **Effect / risk.** Many diverse, verifiable, hard coding tasks. Risk: consensus labels share misconceptions. Keep the brute-force channel independent.
 - **First experiment.** Compose k = 2–4 features from your seed inventory and audit 100 labels by hand. *Success:* audited label error is low (report it), and in-band yield beats single-feature mutation.
 
@@ -283,8 +283,8 @@ When atoms are saturated, composition is the most reliable way to get new diffic
 - **Pitch.** A single composed task that crosses modalities, with end-to-end executable ground truth.
 - **Mechanism.** Every hop has a typed output and its own executor: retrieved span → SQL filter → Python aggregation. The gold answer comes from executing the whole composite program. A two-sided gate runs per hop: masking any bridge must cause failure.
 - **Why it is novel.** Note 07 lists "chaining a document hop, a table or SQL hop and a code-execution hop with end-to-end executable verification" as barely explored. [DataMind](https://arxiv.org/abs/2509.25084) chains 2–5 analytic task types but labels them by self-consistency, which its authors acknowledge biases toward easy compositions. QwenLong-L1.5's KG/SQL items and [Spreadsheet-RL](https://arxiv.org/abs/2605.22642) supply the parts.
-- **Effect / risk.** It should transfer to data-analysis and research agents. Risks: realism, and parametric leakage in the document hop (use post-cutoff or fictional documents; see C7).
-- **First experiment.** Build 300 three-hop items and run a masking ablation on each hop. *Success:* for ≥ 90% of items, masking any single hop drives a strong solver to failure. RL on these items beats single-modality chains on held-out heterogeneous tasks.
+- **Effect / risk.** It should transfer to data-analysis and research agents. Risks: realism, and parametric leakage in the document hop (use post-cutoff or fictional documents; see C6).
+- **First experiment.** Build 300 three-hop items with per-hop masking ablations. *Success:* masking any hop defeats a strong solver on ≥ 90% of items, and RL on them beats single-modality chains on held-out heterogeneous tasks.
 
 ### B8 · Branch–merge topology curricula with merge-node rewards
 `Novel` · **Proposal** · Effort **M**
@@ -619,9 +619,10 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 def route(item, p_hat, history):
     if p_hat >= 0.9:            # saturated: harden with the operator that has the best
         op = pick_operator(item, yield_log, priors)   # logged yield for this family (I3, G3)
-        return enqueue_variant(op(item))              # child goes through the admission gates
+        enqueue_variant(op(item))                     # child goes through the admission gates
+        return train_with_failure_prefix(item)        # meanwhile, extract residual signal (A7)
     if 0 < p_hat < 0.9:
-        return train(item)       # in band; failure-prefix (A7) if p_hat > 0.9 was recent
+        return train(item)       # in band
     if p_hat == 0:
         if not two_sided_gate(item): return quarantine(item)   # probably broken (F4)
         return scaffold(item, ladder=["format", "prefix", "teacher_in_prompt"])  # G6
@@ -732,7 +733,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* hard tasks need recovery skills that clean demonstrations never show.
 - **Mechanism.** Inject faults at action steps while collecting expert trajectories ([TermiGen](https://arxiv.org/abs/2602.07274)). Splice failing prefixes onto verified sibling successes, and mask the loss on the erroneous turns.
 - **Caution.** Off-policy injected errors do not teach self-correction (note 20). For that goal, use an on-policy correction turn ([SCoRe](https://arxiv.org/abs/2409.12917)).
-- **First experiment.** *Success:* recovery rate on held-out faulty environments rises with no drop in clean success.
+- **First experiment.** Inject 1–2 faults into 1k expert terminal trajectories and SFT on the recovered versions against clean-only traces. *Success:* recovery rate on held-out faulty environments rises with no drop in clean success.
 
 ---
 

@@ -671,7 +671,7 @@ The rule: **harden until the policy (or a frontier probe) fails, while the refer
 **Cost and yield.**
 
 - LLM-built environments are cheap per unit: about $0.04 per verified trajectory (AutoWebWorld), $0.047 per processed issue at 50.2% validity (SWE-Factory, GPT-4.1-mini), and about $4.12 per environment with 65 of 100 themes passing (AutoEnv).
-- Curated SWE environments are expensive and low-yield: OpenSWE costs $19.66 per built and about $99 per retained environment, and SWE-Next keeps 2.25% of commit pairs.
+- SWE environments mined from real repositories are expensive or low-yield: OpenSWE costs $19.66 per built and about $99 per retained environment (derived, note 18), and SWE-Next keeps 2.25% of commit pairs.
 - Validation dominates the bill: 78% of ToolHazard's $0.59 per environment is quality inspection (note 18).
 - Simulation is cheaper still, at about 1/3–1/5 of real-environment RL (DreamGym), but see the fidelity rows above.
 
@@ -679,7 +679,7 @@ The rule: **harden until the policy (or a frontier probe) fails, while the refer
 
 - Environment bugs dominate: on raw LLM-built websites about half the tasks were infeasible before repair (48.6% feasible).
 - Checkers are too lenient (VLM judges over-accept) or too strict (scripts reject valid alternative paths).
-- Answer leakage through build residue, git history or package mirrors (DSec, note 17).
+- Answer leakage through build residue or package mirrors (DSec, note 17) and through git history (note 12).
 - Shortcut channels: about 15% of OSWorld tasks need only a terminal (note 15).
 - Mock-tool fidelity is rarely measured.
 
@@ -716,8 +716,8 @@ The rule: **harden until the policy (or a frontier probe) fails, while the refer
 **Cost and yield.**
 
 - The archive adds novelty checks and cell bookkeeping on top of the base generator's validity gate; fitness still needs policy or solver rollouts per child (ACES spends 50 solver attempts on every new puzzle).
-- Yield of genuinely new tasks is modest and decays slowly: ACD kept 1,330 "interestingly new" tasks from 5,000 generations, and about 20% of proposals were still novel at the end.
-- Editing high-regret elites is sample-efficient compared with generating from scratch (ACCEL vs POET above).
+- Yield of genuinely new tasks is modest: ACD kept 1,330 "interestingly new" tasks from 5,000 generations (about 27%), and about 20% of proposals were still novel at the end.
+- Regret-driven editing can be very sample-efficient: ACCEL matched POET's complexity with under 0.05% of POET's environment samples.
 
 **When to use.**
 

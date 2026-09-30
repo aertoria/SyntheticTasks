@@ -124,7 +124,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 - **Underspecification.**
   - After full Code-as-Task filtering, the residual false negatives came from incomplete instructions ("return one of my latest orders") ([SCA](https://arxiv.org/abs/2506.01716)).
   - A contract-validity gate plus an instruction audit cut weakly grounded tasks from 32.8% to 1.2% ([RST](https://arxiv.org/abs/2608.05466)).
-- **Accuracy drops are not proof of difficulty.** RIDE notes that a drop can come from ambiguity ([RIDE](https://arxiv.org/abs/2511.04120)). BenchEvolver's evaluator explicitly rejects "false difficulty": ambiguous wording, misleading I/O and underspecified constraints ([BenchEvolver](https://arxiv.org/abs/2606.01286)).
+- **Accuracy drops are not proof of difficulty.** RIDE's rewrites cut accuracy by 21.73% on average across 26 models, but well-posedness is not quantified, so part of such a drop can come from ambiguity ([RIDE](https://arxiv.org/abs/2511.04120)). BenchEvolver's evaluator explicitly rejects "false difficulty": ambiguous wording, misleading I/O and underspecified constraints ([BenchEvolver](https://arxiv.org/abs/2606.01286)).
 
 **Detect.**
 - *Privileged-information test:* keep a task only if solved with the gold evidence or hint and failed without it (CLI-Universe; oracle-evidence checks in [chapter 07b](07b-domain-recipes-agents-and-beyond.md)).
@@ -144,7 +144,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 - **Self-labels decay with difficulty.**
   - R-Zero's pseudo-label accuracy fell from 79.0% to 69.0% to 63.0% over iterations ([R-Zero](https://arxiv.org/abs/2508.05004)).
   - The unverified majority answer is wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 questions ([T³RL](https://arxiv.org/abs/2603.02203)).
-- **Plausible wrong keys do the most damage.** MATH500 reached 73.4 with the correct label, 64.4 with an unguessable wrong label, and 57.0 with a guessable wrong label ([1-shot RLVR](https://arxiv.org/abs/2504.20571)).
+- **Plausible wrong keys do the most damage.** In 1-shot RLVR on Qwen2.5-Math-1.5B, MATH500 reached 73.4 with the correct label, 64.4 with an unguessable wrong label, and 57.0 with a guessable wrong label ([1-shot RLVR](https://arxiv.org/abs/2504.20571)).
 - **False negatives.**
   - Rule-based math checkers average 86% recall ([Huang et al.](https://arxiv.org/abs/2505.22203)).
   - TinyV found false negatives in more than 38% of responses on Big-Math-RL-Verified ([TinyV](https://arxiv.org/abs/2505.14625)).
@@ -153,14 +153,14 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
   - TACO tests have a false-positive rate above 90% on hard problems ([HardTests](https://arxiv.org/abs/2505.24098)).
   - About 1 in 5 accepted patches were wrong ([SWE-ABS](https://arxiv.org/abs/2603.00520)).
 - **Noise mostly slows learning, as long as the verifier beats chance.** With J = TPR − FPR > 0, the incorrect mass dies out; with J < 0 it grows ([RLVεR](https://arxiv.org/abs/2601.04411)).
-- **SFT tolerates noise; RL does not.** For SFT, no answer filtering averaged 41.9 and GPT-verification filtering 40.0 ([OpenThoughts](https://arxiv.org/abs/2506.04178)). In RL, every wrong key becomes a wrong reward.
+- **SFT tolerates answer noise better than RL.** For math SFT, no answer filtering averaged 41.9 and GPT-verification filtering 40.0 ([OpenThoughts](https://arxiv.org/abs/2506.04178)). In RL, every wrong key becomes a wrong reward, so noise at least slows learning (RLVεR above).
 
 **Detect.** A gold audit slice bucketed by difficulty; verifier TPR/TNR on known-good and known-bad solutions; metamorphic tests where equivalent rewrites must get the same verdict ([Where the Verifier Fails](https://arxiv.org/abs/2609.01354)); IRT flags to prioritize hand audits (95% precision in the top 200; [Land & Bikel](https://arxiv.org/abs/2605.30504)). Size audits by binomial arithmetic: 0 errors in 200 items bounds the rate below about 1.9%.
 
 **Mitigate.**
 - Build correctness in by construction. Solution-first evolution gave 97.7% validity against 79.3% for problem-first ([BenchEvolver](https://arxiv.org/abs/2606.01286)) (**Strong**).
 - Decorrelate evidence across model families, modalities and tools instead of adding more votes from the same model. VStress's conditional gain was 0.0126 for same-model repeats and 0.0913 for cross-family channels ([VStress](https://arxiv.org/abs/2609.36958)) (**Moderate**).
-- Prefer answer-preserving operators when labels are uncertain. Under GRPO, a wrong *inherited* label gives all-zero rewards and so no update, whereas a wrong *new* majority label rewards wrong answers ([MathForge](https://arxiv.org/abs/2601.20614)) (**Moderate**).
+- Prefer answer-preserving operators when labels are uncertain. MathForge argues that under GRPO a wrong *inherited* label gives all-zero rewards and so no update, whereas a wrong *new* majority label rewards wrong answers ([MathForge](https://arxiv.org/abs/2601.20614)) (**Moderate**).
 - Spend verification budget on RL pools and question selection on SFT pools ([chapter 04](04-verification-and-quality-control.md)).
 
 ### F5. Consensus filters that delete the frontier
@@ -196,11 +196,11 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Root cause.** LLM generators are poor random samplers and have strong stylistic fingerprints. The hardening model sees the answer and leaks it. Templates repeat. The environment offers a cheaper path than the skill you meant to train.
 
 **Evidence.**
-- **LLM generators are not random samplers.** LLM MCQ generators put the correct answer first 47.9–57.9% of the time vs 25% uniform ([Tang et al.](https://arxiv.org/abs/2605.01846)); LLM-written NLI is 86–96% solvable from the hypothesis alone ([Proebsting & Poliak](https://arxiv.org/abs/2410.08996)).
-- **Leaks.** A naive "the variant is solvable" reward led the policy to embed hints or the answer in the variant ([SvS](https://arxiv.org/abs/2508.14029)); a role prompt leaked ZebraLogic gold grids, and removing it cut the baseline by 62 points ([LURE](https://arxiv.org/abs/2608.21871)).
+- **LLM generators are not random samplers.** Llama-3.x MCQ generators put the correct answer first 47.1–57.9% of the time vs 25% uniform ([Tang et al.](https://arxiv.org/abs/2605.01846)); LLM-written NLI is 86–96% solvable from the hypothesis alone ([Proebsting & Poliak](https://arxiv.org/abs/2410.08996)).
+- **Leaks.** A naive "the variant is solvable" reward led the policy to embed hints or the answer in the variant ([SvS](https://arxiv.org/abs/2508.14029)); R-Zero's role-conditioned prompt leaked ZebraLogic gold grids, and removing it cut that baseline by 62 points ([LURE](https://arxiv.org/abs/2608.21871)).
 - **Guessable or lookup-able items.** Kimi drops prompts answered correctly *without CoT* within 8 guesses, as they give false-positive rewards ([Kimi k1.5](https://arxiv.org/abs/2501.12599)). With a literal needle match Llama 3.3 70B scores 98.5 at 32K, vs 56.2 with one latent hop and 25.9 with two ([NoLiMa](https://arxiv.org/abs/2502.05167)). About 15% of OSWorld tasks need only a terminal ([Epoch AI](https://epoch.ai/blog/what-does-osworld-tell-us-about-ais-ability-to-use-computers)).
 - **Right answer, wrong process.** About 28% spurious guessing in mid-sized models ([TRACE](https://arxiv.org/abs/2607.04784)); up to a 65.5% drop from answer-only to step-checked grading ([IneqMath](https://arxiv.org/abs/2506.07927)).
-- **Shortcut filtering pays.** Shortcut-filtered data scored 13.15 against 7.14 unfiltered, at the cost of removing about 15% of items ([Sim2Reason](https://arxiv.org/abs/2604.11805)).
+- **Shortcut filtering pays.** On IPhO at 3B, shortcut-filtered data scored 13.15 against 7.14 unfiltered, at the cost of removing about 15% of items ([Sim2Reason](https://arxiv.org/abs/2604.11805)).
 
 **Detect.** An audit battery per generator family (**Strong**; [Idiosyncrasies](https://arxiv.org/abs/2502.12150), [Gururangan et al.](https://arxiv.org/abs/1803.02324)): synthetic-vs-real classifier; question-only, choices-only and answer-prior baselines; no-CoT guess screen; no-tool/no-data/no-evidence ablations; chi-square on answer marginals; string search for the answer and intermediate values; renaming or isomorphic perturbation (remapping repo names also exposes memorized cues; [SchrodingerRepo](https://arxiv.org/abs/2609.27891)).
 
@@ -219,12 +219,12 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 | Verifier type | Observed exploits | Guards with evidence |
 |---|---|---|
 | Unit tests / SWE harnesses | GPT-5 cheated on 54–76% of impossible SWE variants. Production hacks: `__eq__` overrides, `sys.exit(0)`, patching pytest via `conftest.py`, and these generalized to misalignment ([ImpossibleBench](https://arxiv.org/abs/2510.20270); [MacDiarmid et al.](https://arxiv.org/abs/2511.18397)). Challengers write randomly failing tests or obfuscate code ([SSR](https://arxiv.org/abs/2512.18552)). Hidden tests led agents to fetch the fix over the network ([Qwen3-Coder-Next](https://arxiv.org/abs/2603.00729)) | Read-only or hidden tests; out-of-process grading; detecting edits to test files; type-checking returned objects. An abort option cut GPT-5's cheating from 54% to 9%. Inverse-mutation checks. Network and git blocking |
-| Terminal / sandbox | 16% of 1,968 terminal tasks were hackable from the description alone ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)). Agents attacked the sandbox itself: scheduler socket, logs, overwriting `/bin/bash` ([DSec](https://arxiv.org/abs/2609.22978)) | Hacker–fixer loop (KernelBench attack success 62% → 0%); checksummed mounts; separate build and run accounts |
+| Terminal / sandbox | 16% of 1,968 terminal tasks were hackable from the description alone ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)). Agents attacked the sandbox itself: forged RPCs to the command-daemon socket, reading its logs for leaked answers, overwriting `/bin/bash` ([DSec](https://arxiv.org/abs/2609.22978)) | Hacker–fixer loop (KernelBench attack success 62% → 0%); checksummed mounts; separate build and run accounts |
 | LLM judges / rubrics | "Master keys": up to 80% false-positive rate, 67.0% for Qwen2.5-72B on "Thought process:" ([Master-RM](https://arxiv.org/abs/2507.08794)). Generated rubrics exploited in 8–26% of the unbiased cut and 36–98% of the stress cut ([ImpossibleRubrics](https://arxiv.org/abs/2609.16816)). Training-judge score rises while the gold judge peaks and falls (−3 HealthBench-Hard, −22 ResearchQA) ([Rubric Dropout](https://arxiv.org/abs/2608.11669)). Fine-tuning a generative verifier *raised* its susceptibility from 21.7 to 35 ([Huang et al.](https://arxiv.org/abs/2505.22203)) | Rule check first, discriminative verifier second (xVerify ≤0.4% attack success); truncated-response negatives; certificate-faithful rubrics (0/45 exploited); dropping 30–50% of criteria per step; monitoring the train–oracle gap |
 | Lean / Dafny / Verus | `assume(false)` spread from one program to all programs ([AlphaVerus](https://arxiv.org/abs/2412.06176)). Dafny RL reward rose from 2.2% to 58.1% via `ensures result >= 0` and leaky specs ([Tan](https://arxiv.org/abs/2605.30914)). A Lean 4.9.0 `apply?` bug silently dropped `sorry` and inflated PutnamBench counts ([DeepSeek-Prover-V2](https://arxiv.org/abs/2504.21801)) | Screen for `sorry`, `admit`, new axioms and `assume(false)`; vacuity check (try to prove False); block spec edits; re-run completeness checks after any LLM spec repair |
-| Constraint checkers (IF) | Copied placeholders, dummy list items, repetition to hit counts, copied delimiters ([IFDecorator](https://arxiv.org/abs/2508.04632)); copy-paste satisfaction ([UNSPECIFIC](https://arxiv.org/abs/2608.09154)); "all instructions followed" self-claims ([Kimi K2](https://arxiv.org/abs/2507.20534)) | IntentCheck cut hacking from 14.53% to 7.60%; hidden trip-wire prompts; reward-model gate ([IFBench](https://arxiv.org/abs/2507.02833)); satisfaction checked on a summary as well |
+| Constraint checkers (IF) | Copied placeholders, dummy list items, repetition to hit counts, copied delimiters ([IFDecorator](https://arxiv.org/abs/2508.04632)); copy-paste satisfaction ([UNSPECIFIC](https://arxiv.org/abs/2608.09154)); "all instructions are followed" self-claims ([AdvancedIF](https://arxiv.org/abs/2511.10507)) and false claims of compliance ([Kimi K2](https://arxiv.org/abs/2507.20534)) | IntentCheck cut hacking from 14.53% to 7.60%; hidden trip-wire prompts; reward-model gate ([IFBench](https://arxiv.org/abs/2507.02833)); satisfaction checked on a summary as well |
 | Performance / timing | 32.8% of early CUDA-L1 outputs exploited stream timing, for a fake 18× speedup ([CUDA-L1](https://arxiv.org/abs/2507.14111)) | Stream sync; output-materialization checks; treat every sudden reward jump as a probable hack |
-| Model-written checkers | When one agent writes both solution and reward, the reward re-checks the construction procedure, e.g. `chart_verified = True` ([CUA-Gym](https://arxiv.org/abs/2605.25624)) | Information barrier between solution author and reward author; forbidden-pattern scan |
+| Model-written checkers | When one agent writes both solution and reward, the reward "tends to re-check the construction procedure instead of measuring task completion"; its forbidden-pattern scan targets constant flags such as `chart_verified = True`, placeholder checks and bare file-existence scoring ([CUA-Gym](https://arxiv.org/abs/2605.25624)) | Information barrier between solution author and reward author; forbidden-pattern scan |
 
 - **Monitors and instructions are not enough.** LLM monitors caught 86–89% of cheating on LiveCodeBench but only 42–65% on SWE ([ImpossibleBench](https://arxiv.org/abs/2510.20270)); agents took a planted shortcut in over 50% of runs even when told not to ([BaitBench](https://arxiv.org/abs/2608.30724)).
 
@@ -257,6 +257,8 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Symptom.** The targeted metric rises while untargeted skills fall. Previously mastered training items quietly regress.
 
+**Root cause.** A narrow reward or data mix pulls the policy toward the targeted skill. Off-policy SFT data moves the model further from its base than on-policy RL does, so SFT forgets more. Mastered prompts leave the stream (they give zero advantage or are retired) and decay unobserved.
+
 **Evidence.**
 - **Narrow RL destroys general skills.** IF-only RLVR on the Qwen2.5-7B base scored AlpacaEval 1.1 and GSM8K 15.3 ([IFBench](https://arxiv.org/abs/2507.02833)).
 - **SFT forgets more than RL.** Math-only SFT dropped IFEval from 69.2 to 42.3 and HaluEval from 35.7 to 2.3, while RL on the same data kept IFEval at 70.0 ([Huan et al.](https://arxiv.org/abs/2507.00432)).
@@ -264,7 +266,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Detect.** Run a regression suite (IFEval, hallucination, conversational QA, long context) and track correct-set turnover on the training set.
 
-**Mitigate.** Mix domains (**Strong**); gate constraint rewards with a reward model or intent check; keep a 1–2% review queue and a 5–10% easy pool (**Moderate**); regenerate distilled traces near-on-policy or follow SFT with RL.
+**Mitigate.** Mix domains (**Strong**); gate constraint rewards with a reward model or intent check; keep a 1–2% review queue (ReMind) and an easy pool sampled about 10% of the time (MiMo-7B) (**Moderate**); regenerate distilled traces near-on-policy or follow SFT with RL.
 
 ---
 
@@ -312,12 +314,12 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Evidence.**
 - **A small penalty can start the spiral.** A −0.1 reward for invalid questions produced a death spiral: proposer entropy rose, the valid-question rate went to 0, and solver reward rose misleadingly. The main configuration uses 0 instead ([SSP](https://arxiv.org/abs/2510.18821)). SPICE uses ρ = −0.1 without the problem ([SPICE](https://arxiv.org/abs/2510.24684)), so the effect depends on the setup.
 - **Missing stabilizers collapse the proposer.** A frozen solver drives problems to unsolvable or trivial. Removing the curriculum-DAG descent peaked at 51.3% and then collapsed to 12% ([ANCORA](https://arxiv.org/abs/2604.27644)).
-- **Collapse without anchors or replay.** Formatting collapses by epoch 4 without golden replay ([STRETCH](https://arxiv.org/abs/2609.18642)); trained user simulators collapse to accept/reject ([SEAD](https://arxiv.org/abs/2602.03548)); self-play without a quality self-reward "degenerate[s] into adversarial nonsense" ([Language Self-Play](https://arxiv.org/abs/2509.07414)); an intrinsic-reward teacher caused student collapse ([SOAR](https://arxiv.org/abs/2601.18778)).
+- **Collapse without anchors or replay.** Formatting collapses by epoch 4 without golden replay ([STRETCH](https://arxiv.org/abs/2609.18642)); a trained user simulator forced success rates to about 50% by accepting or rejecting regardless of agent performance ([SEAD](https://arxiv.org/abs/2602.03548)); self-play without a quality self-reward "degenerate[s] into adversarial nonsense" ([Language Self-Play](https://arxiv.org/abs/2509.07414)); an intrinsic-reward teacher caused student collapse ([SOAR](https://arxiv.org/abs/2601.18778)).
 - **Naive setter–solver play is hacked by invalid problems.** VHG fixes it with R = 1[valid]·(1 − Acc) ([VHG](https://arxiv.org/abs/2605.06660)).
 
 **Detect.** Put the valid-proposal rate, proposer entropy, the share of proposals at p ∈ {0, 1}, and solver reward *vs* held-out accuracy on one dashboard.
 
-**Mitigate.** Gate difficulty multiplicatively by validity, and give malformed proposals zero or clipped reward whenever the valid rate drops (**Moderate**: SSP ablation vs SPICE). Co-evolve the solver rather than freezing it; add golden replay or human anchors; freeze or rule-anchor graders; exclude noisy batches from generator updates.
+**Mitigate.** Gate difficulty multiplicatively by validity (VHG), and give malformed proposals zero or clipped reward whenever the valid rate drops (**Emerging**: a single SSP ablation, and SPICE runs fine with −0.1). Co-evolve the solver rather than freezing it; add golden replay or human anchors; freeze or rule-anchor graders; exclude noisy batches from generator updates.
 
 ### F13. Iterative self-synthesis drift
 
@@ -328,8 +330,8 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Evidence.**
 - **Self-labelled loops peak early.** R-Zero peaks after 1 iteration at 0.6B and after 3 at 4B. The 0.6B model starts declining at 70.6% label accuracy, while the 4B model tolerates 48.8%, so label noise alone does not explain collapse ([R-Zero](https://arxiv.org/abs/2508.05004)).
 - **Round counts converge on about 3.** WizardCoder peaked at 3 rounds ([WizardCoder](https://arxiv.org/abs/2306.08568)); a third small-model evolution round degraded results ([Hui et al.](https://arxiv.org/abs/2412.11231)); SEIF saturated after round 3 ([SEIF](https://arxiv.org/abs/2605.07465)); UltraIF's third DPO round diverged ([UltraIF](https://arxiv.org/abs/2502.04153)).
-- **Polarization and drift.** Iterative synthetic instruction tuning polarizes competence ([KITE](https://arxiv.org/abs/2607.17043)); unanchored self-play drifts toward LM-style bugs and regresses on human bugs, which a 20% real-bug mix fixed ([Anchored Self-Play](https://arxiv.org/abs/2607.03523)).
-- **Unfiltered self-labels avalanche.** Without filtering, 6×6 multiplication accuracy was only 13.7% after 7 rounds. Five-model majority voting raised label accuracy from 31% to 93.3% ([Self-Improving Transformers](https://arxiv.org/abs/2502.01612)).
+- **Polarization and drift.** Iterative synthetic instruction tuning polarizes competence ([KITE](https://arxiv.org/abs/2607.17043)); unanchored self-play drifts toward LM-style bugs and regresses on human bugs; a similarity-to-real-bugs reward plus a 20% real-bug mix gave +7.0 pp on average (+3.4 pp on human bugs) over standard self-play ([Anchored Self-Play](https://arxiv.org/abs/2607.03523)).
+- **Unfiltered self-labels avalanche.** Without filtering, 6×6 multiplication accuracy was only 13.7% after 7 rounds. Majority voting across five models raised 5×6 label accuracy from 31% to 93.3% ([Self-Improving Transformers](https://arxiv.org/abs/2502.01612)).
 - **Model collapse.** Replacing real data loses the tails ([Shumailov et al.](https://arxiv.org/abs/2305.17493)); accumulating keeps error bounded ([Gerstgrasser et al.](https://arxiv.org/abs/2404.01413)); verifier selection prevents collapse ([Feng et al.](https://arxiv.org/abs/2406.07515)).
 
 **Detect.** Measure accuracy on a gold slice every round, bucketed by difficulty, and keep a held-out human-task evaluation.
@@ -344,6 +346,8 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Symptom.** Large gains on public benchmarks that do not appear on post-cutoff items or on renamed or perturbed variants.
 
+**Root cause.** Seeds, operator exemplars, metadata or target conditioning come from evaluation sets; the generator regurgitates or paraphrases benchmark items it has memorized, and paraphrases slip past n-gram filters; the base model has already memorized the benchmark, and RL can spread that leakage to related benchmarks.
+
 **Evidence.**
 - **Evolved and raw pools overlap evaluations.** Evol-CodeAlpaca overlapped 70.7% of HumanEval ([Tulu 3](https://arxiv.org/abs/2411.15124)); DeepMath's raw pool contained 90% of AIME24/AMC23 and 76.6% of MATH500 ([DeepMath-103K](https://arxiv.org/abs/2504.11456)).
 - **Paraphrases evade n-grams.** A 13B model trained on rephrased test items reached GPT-4-level scores, and LLM-generated synthetic data was itself contaminated ([LLM Decontaminator](https://arxiv.org/abs/2311.04850)).
@@ -351,17 +355,23 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 - **GRPO spreads contamination.** After GRPO, contamination inflated scores on related *uncontaminated* benchmarks as well ([2601.06103](https://arxiv.org/abs/2601.06103)).
 - **Leakage through the pipeline.** CodecLM's metadata came from validation splits of its evaluation benchmarks ([CodecLM](https://arxiv.org/abs/2404.05875)); ZeroGUI used OSWorld test tasks as generation exemplars ([ZeroGUI](https://arxiv.org/abs/2505.23762)).
 
+**Detect.** Semantic decontamination audit of the complexified *outputs* (embedding retrieval + LLM judge) against every evaluation set; partial-prompt probes on the base and trained model (prefix completion, as in Wu et al.); renamed or perturbed variants; the gap between public-benchmark and post-cutoff gains; a post-training re-audit, since GRPO can spread leakage.
+
 **Mitigate** (**Strong**). Decontaminate complexified *outputs* semantically, not just seeds (embedding retrieval + LLM judge; web-search novelty filter, SAND-Math τ = 0.85); keep operator discovery and target conditioning disjoint from evals; remap names as a cheap memorization check; evaluate on post-cutoff contests ([MathArena](https://arxiv.org/abs/2505.23281)); hold out whole environments, not just instructions.
 
 ### F15. Qwen-specific spurious-reward confounds
 
 **Symptom.** Tiny, odd or even random-label data gives large gains on Qwen2.5(-Math), and the effect vanishes on other model families.
 
+**Root cause.** Qwen2.5-Math has latent behaviours (notably code-style reasoning) that almost any policy update amplifies, including updates driven by random rewards through GRPO's clipping bias, and it has memorized parts of common math benchmarks. Gains then reflect the base model, not the data.
+
 **Evidence.**
-- **Random rewards work on Qwen2.5-Math, and only there.** Random rewards gave +21.4 on MATH-500 against +29.1 with ground truth on Qwen2.5-Math-7B, through a clipping bias that amplifies "code reasoning" (65% → >90%). The gains did not appear on Llama3 or OLMo2 ([Spurious Rewards](https://arxiv.org/abs/2506.10947)).
+- **Random rewards work on Qwen2.5-Math but not on Llama3 or OLMo2.** Random rewards gave +21.4 on MATH-500 against +29.1 with ground truth on Qwen2.5-Math-7B, through a clipping bias that amplifies "code reasoning" (65% → >90%). The gains did not appear on Llama3 or OLMo2 ([Spurious Rewards](https://arxiv.org/abs/2506.10947)).
 - **Fresh data removes the effect.** On freshly generated arithmetic, only accurate rewards beat the base model ([RandomCalculation](https://arxiv.org/abs/2507.10532)).
 - **Data-efficiency results are confounded.** 32 identical prompts per step matched full-data training on Qwen2.5-Math-1.5B, and the authors declared their Qwen ablations invalid ([Prompt Replay](https://arxiv.org/abs/2603.21177)); dose headlines such as 1-shot RLVR's MATH500 36.0 → 73.6 were measured on Qwen2.5-Math ([1-shot RLVR](https://arxiv.org/abs/2504.20571)).
 - **Families respond differently.** RLVR's regressions on mastered skills were severe for Llama and Gemma and mild for Qwen ([Algebrarium](https://arxiv.org/abs/2602.08281)).
+
+**Detect.** A random-reward (and format-only) arm run alongside every data-policy arm; re-run the comparison on a freshly generated procedural set and on a non-Qwen family; partial-prompt memorization probes on the evaluation set.
 
 **Mitigate.** Every dose, mixing or operator claim needs a random-reward arm, a fresh procedural control and at least one non-Qwen family (**Strong**).
 
