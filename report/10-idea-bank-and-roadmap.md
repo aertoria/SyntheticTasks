@@ -5,8 +5,8 @@
 > - **First make the seeds you already have hard again; build generators second.** The cheapest high-confidence moves reuse the existing verifier: audit and harden tests, strip shortcuts, answer-preserving stem rewrites, oracle-preserving tool perturbations, hint stripping. All are established practice (**Strong/Moderate**).
 > - **New difficulty is most reliable when built from verified parts:** composition of mastered atoms (chaining with a horizon curriculum, p^k-calibrated constraint stacking, evaluator-first chaining), solution-first recursive escalation of executable artifacts (RST), and planted or answer-first construction. Train compositions with RL, not SFT (**Strong**).
 > - **"Hard" usually means "broken" unless every candidate passes the same gates:** bundle contract (oracle passes, no-op fails, known-bad fails), two-sided solvability, shortcut probes, a pilot band on *your* policy, and a red-team pass. Log yield and cost per operator: in the one controlled RLVR study, 64% of rejected mutations were too easy ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
-> - **Trained generators are the 60–90-day bet** (validity-gated setter RL, SvS, stepping stones, a learned constructor of (problem, environment, verifier) triplets). They pay off once static operators stop filling the band, and the loop must never train its own grader (**Moderate/Emerging**).
-> - **About a quarter of the ideas are novel proposals** built from the notes' open problems (operator-conditioned priors, online re-complexification, Lean-checked "harder-than" variants, RST for workbooks and notebooks). Each is tagged **Proposal** and carries a first experiment and a kill criterion.
+> - **Trained generators are the 60–90-day bet** (validity-gated setter RL, stepping stones, a learned constructor of (problem, environment, verifier) triplets; SvS, which needs no separate generator, can start earlier inside math RL). They pay off once static operators stop filling the band, and the loop must never train its own grader (**Moderate/Emerging**).
+> - **About a quarter of the ideas are novel proposals** built from the notes' open problems (operator-conditioned priors, online re-complexification, Lean-checked "harder-than" variants, RST for workbooks and notebooks). Each is tagged **Proposal** and carries a first experiment whose success metric doubles as its kill criterion (§14.5); a few add an explicit one.
 > - **Adopt a data policy only if its paired 95% CI excludes zero over 8–12 matched seeds** and the gain holds on held-out operator families, post-cutoff items and a non-Qwen model, with no regression-suite drop ([§14](#14-experiment-protocol)).
 
 ## Contents
@@ -82,7 +82,7 @@ These nine ideas reuse the checker you already have, so labels are free and the 
 
 - **Pitch.** Rewrite saturated questions so the *same* gold answer takes more reasoning; no new labels.
 - **Mechanism / seeds / verifier.** [MathForge](https://arxiv.org/abs/2601.20614) MQR's three rewrites: irrelevant background, an invented abstract term, and a key number replaced by an independent sub-problem (execute it; it must equal the constant it replaces). Or an answer-hidden rewrite gated by pass rate ([SynthRL](https://arxiv.org/abs/2506.02096)). Exact-answer seeds and a rule checker.
-- **Why it should work.** An o3 audit found 99/97/97% of MQR rewrites answer-equivalent, and a broken rewrite yields an all-zero GRPO group, so it is inert. With the DGPO optimizer, the average rose from 37.61 (GRPO) to 42.17 on Qwen2.5-Math-7B (data and optimizer confounded). SynthRL hardens only seeds at ≥ 12/16 and accepts a rewrite only if 4 ≤ passes ≤ original − 2.
+- **Why it should work.** An o3 audit found 99/97/97% of MQR rewrites answer-equivalent, and a broken rewrite yields an all-zero GRPO group, so it is inert. On Qwen2.5-Math-7B, MQR data alone raised the average from 37.61 (GRPO) to 41.04; adding the DGPO optimizer gave 42.17. SynthRL hardens only seeds at ≥ 12/16 and accepts a rewrite only if 4 ≤ passes ≤ original − 2.
 - **Effect / risk.** Refills the band from the easy end. Risk: answer or hint leakage; screen with a model that sees only the rewrite.
 - **First experiment.** 2k seeds at p̂ ≥ 0.9, 3 rewrites each, SynthRL gate; GRPO on seeds + rewrites vs seeds only at equal steps. *Success:* higher effective-prompt ratio and a held-out paired CI excluding zero.
 
@@ -128,7 +128,7 @@ These nine ideas reuse the checker you already have, so labels are free and the 
 - **Pitch.** An item solved 127 times out of 128 still teaches something: start rollouts from its one failure.
 - **Mechanism / seeds / verifier.** Truncate a rare incorrect rollout, choosing the prefix length so accuracy is about 0.5; refresh prefixes as the policy moves. Unchanged checker.
 - **Why it should work.** On MATH items solved 121–127/128, the 5-benchmark average rose from 40.6 to 44.5, vs 40.7 for plain RLVR on the same items and 44.0 for freshly collected medium problems ([Failure-prefix conditioning](https://arxiv.org/abs/2601.20829)).
-- **Effect / risk.** Signal from dead weight. Risk: prefixes drift off-policy; measure the cost to adherence to correct prefixes.
+- **Effect / risk.** Signal from dead weight. Risks: the study reports a mild cost in following *correct* prefixes, and prefixes go stale as the policy moves; measure both. Adding unsaturated items to the prefix data lowered the average (42.3).
 - **First experiment.** Replicate on your p̂ ≥ 0.95 pool with a non-Qwen model. *Success:* matches a "fresh medium problems" arm at equal compute.
 
 ### A8 · Meta-task relabeling: verdict, critique, error location
@@ -178,7 +178,7 @@ Once atoms are saturated, composition is the most reliable source of new difficu
 
 - **Pitch.** Choose the number of constraints k so all-pass probability lands in the band, then add structure rather than count.
 - **Mechanism / seeds / verifier.** Stacking plus chain and selection structure (conditions computable from the input), one checker per constraint, and an intent gate.
-- **Why it should work.** Per-constraint success follows 72.0% × 0.922^(k−1) across 15 models ([CSE](https://arxiv.org/abs/2608.12426)). Training on 5–6 constraints beat up to 3 ([IFBench](https://arxiv.org/abs/2507.02833)). GPT-4 scores 0.626 on Selection+Chain at depth ≥ 3 and 14.9% on the coherent multi-layer Selection test ([ComplexBench](https://arxiv.org/abs/2407.03978)). Averaging instead of structure-aware aggregation cost 3.9 IFEval and 5 CFBench points ([LsrIF](https://arxiv.org/abs/2601.06431)).
+- **Why it should work.** Mean per-constraint success follows 72.0% × 0.922^(k−1) across 15 models ([CSE](https://arxiv.org/abs/2608.12426)). Training on up to 5–6 constraints beat up to 3 for a TÜLU-DPO policy, but a Qwen2.5 policy peaked at 3 ([IFBench](https://arxiv.org/abs/2507.02833)), so treat the count as a per-policy hyperparameter. GPT-4 scores 0.626 on Selection+Chain at depth ≥ 3 and 14.9% on the coherent multi-layer Selection test ([ComplexBench](https://arxiv.org/abs/2407.03978)). Averaging instead of structure-aware aggregation cost 3.9 IFEval and 5 CFBench points ([LsrIF](https://arxiv.org/abs/2601.06431)).
 - **Effect / risk.** A predictable dial. Risks: over-hardening is the default (10,772 prompts at pass rate 0 vs 7,324 in band, [IFDecorator](https://arxiv.org/abs/2508.04632)); conflicts ("output JSON" is jointly unsatisfiable with 9 of 24 instructions, note 08); hacking (IFDecorator's intent check cut the trip-wire hack rate from 14.53% to 7.60%).
 - **First experiment.** Fit per-constraint success on your policy; generate at k with p^k ≈ 0.4; per-constraint reward with an all-pass guard vs binary. *Success:* higher in-band yield and gains on held-out constraint families.
 
@@ -206,7 +206,7 @@ Once atoms are saturated, composition is the most reliable source of new difficu
 - **Pitch.** Replace one-line synthetic bugs with bugs an agent introduces while adding features, and with combinations of individually validated bugs.
 - **Mechanism / seeds / verifier.** FeatAdd agentic bugs ([BugPilot](https://arxiv.org/abs/2510.19898)); bug combination ([SWE-smith](https://arxiv.org/abs/2504.21798)) where the combined fail-to-pass set equals the union and bugs do not cancel.
 - **Why it should work.** FeatAdd bugs touch 4.2 files and 415.9 net lines on average; Claude resolved 41.4% of them vs 65.9% of SWE-smith bugs; 1.2k FeatAdd/BugInstruct bugs beat 3k others by 2%. Asking an LLM "for a bug" collapses to one-line edits ([SSR](https://arxiv.org/abs/2512.18552)).
-- **Effect / risk.** Harder, more realistic SWE data. Risk: GRPO on hard FeatAdd bugs did not beat SFT (it needs partial solvability); use SFT on the hardest tier and RL on the in-band subset.
+- **Effect / risk.** Harder, more realistic SWE data. Risk: GRPO on FeatAdd bugs did not beat SFT on any subset (the authors attribute this to GRPO needing partial solvability); use SFT on the hardest tier and RL on the in-band subset.
 - **First experiment.** FeatAdd bugs in 20 repositories vs SWE-smith-only at equal task count. *Success:* SWE-bench Verified and Pro gains.
 
 ### B7 · Heterogeneous chains: document hop → SQL hop → code hop
@@ -297,8 +297,8 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 
 *Pitch:* grow the reference solution first, then realign the environment, the verifier and, last, the instruction; reseed with the accepted children.
 - **Mechanism / seeds / verifier.** Each round extends `solve.sh`, realigns the environment, extends the verifier, then rewrites the instruction. Gates: fresh-sandbox oracle pass; contract validity; minimum deltas (≥ 3 files, ≥ 8 solution lines, ≥ 12 verifier lines); instruction ≤ 180 words and ≤ 1.6× the seed. Reseed under diversity caps.
-- **Evidence.** Over 15 rounds from 639 seeds, DeepSeek-V4-Pro pass@4 fell from 90% to 2.5%, with about 50% of attempts accepted each round at about $0.05 per task and median assertions growing from 17 to 57 ([RST](https://arxiv.org/abs/2608.05466)). On this pool GRPO stayed flat at 51.7%, while PPO with a warm-started critic and reward r = P/20 reached 64.0% ([T1](https://arxiv.org/abs/2609.11042)). LLM rewrites of task *descriptions* did not beat untouched ones (OpenThoughts-Agent, note 16).
-- **Effect / risk.** Compounding verified difficulty at low cost. Risks: realism drift (nearest-neighbour similarity 0.22 → 0.46 over rounds) and unknown exploitability by round (J5). Plan for dense rewards.
+- **Evidence.** Over 15 rounds from 639 seeds, DeepSeek-V4-Pro pass@4 fell from 90% to 2.5%, with about 50% of attempts accepted each round at about $0.05 per task and median assertions growing from 17 to 57 ([RST](https://arxiv.org/abs/2608.05466)). On an audit-selected 15k subset of this pool, GRPO stayed at 51.7% on TB2.1, while PPO with a warm-started critic and reward r = P/20 (P = passing assertions) reached 64.0% ([T1](https://arxiv.org/abs/2609.11042)). LLM rewrites of task *descriptions* did not beat untouched ones (OpenThoughts-Agent, note 16).
+- **Effect / risk.** Compounding verified difficulty at low cost. Risks: realism drift (unigram JSD to TB2 rises 0.358 → 0.433), homogenization (nearest-neighbour similarity 0.22 → 0.46 over rounds) and unknown exploitability by round (J5). Plan for dense rewards.
 - **First experiment.** 3 rounds on 200 seeds; assertion-count reward on round-2/3 tasks vs the original seeds. *Success:* held-out terminal-benchmark gains, pass rate falling per round, acceptance around 50%.
 
 ### D2 · RST for workbooks, notebooks and documents
@@ -361,7 +361,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 *Pitch:* when pass@1 is 100%, keep correctness as a gate and reward quality continuously.
 - **Mechanism / seeds / verifier.** Alter the goal, constrain outputs or generalize inputs (MST → degree-constrained spanning tree) and score against a baseline in [0, 1] ([FrontierSmith](https://arxiv.org/abs/2605.14445)); for code, reward speed behind a correctness gate with milestone shaping ([CUDA Agent](https://arxiv.org/abs/2602.24286)), hidden multi-distribution inputs, synchronized timing and replay on your hardware.
 - **Evidence.** With 200 problems, GRPO gave +8.82 FrontierCS and +306 ALE-bench rating on Qwen3.5-9B, beating a closed-ended HardTests control by +5.24 / +236.40. CUDA Agent's milestone reward {−1, 1, 2, 3} made 96.8% of kernels faster than torch.compile vs 60.4% with raw speedup.
-- **Risk.** The most-hacked reward in the literature: under hidden inputs GPT-5.5's apparent 1.43× speedup is 0.88×, and the official KernelBench check misses 16.9% of injected faults ([Measuring the Checker](https://arxiv.org/abs/2609.22220)). *Novel extension:* reward only "faster **and** provably equivalent", via differential binary verification ([AsmEvo](https://arxiv.org/abs/2608.20711)) or refinement-type proofs ([Semantic-equivalence self-play](https://arxiv.org/abs/2604.17010)); note 22 finds this nearly absent.
+- **Risk.** The most-hacked reward in the literature: under a stricter protocol (hidden multi-distribution inputs, a TF32 baseline) GPT-5.5's apparent 1.43× speedup is 0.88× ([KernelBench-Verified](https://arxiv.org/abs/2607.16241)), and the official KernelBench check misses 16.9% of injected faults ([Measuring the Checker](https://arxiv.org/abs/2609.22220)). *Novel extension:* reward only "faster **and** provably equivalent", via differential binary verification ([AsmEvo](https://arxiv.org/abs/2608.20711)) or refinement-type proofs ([Semantic-equivalence self-play](https://arxiv.org/abs/2604.17010)); note 22 finds this nearly absent.
 - **First experiment.** 200 saturated algorithm problems → open-ended variants. *Success:* reward variance persists and held-out optimization benchmarks improve.
 
 ### D9 · Formal-verification lift, the stage/language ladder, and band proposers
@@ -392,7 +392,7 @@ Build these once static operators stop filling the band. They follow the stabili
   - Lowering [OpenSIR](https://arxiv.org/abs/2511.00602)'s solve-rate floor from 0.5 to 0.1 collapsed validity from 70.8% to 42.3%.
   - D2Evo, with 1.7K real samples, beat full-data RL on 19K (55.32 vs 52.70, Qwen3-8B-Base).
   - [R-Zero](https://arxiv.org/abs/2508.05004)'s pseudo-label accuracy fell from 79% to 63%, and its math score peaked then fell (49.12 → 46.52).
-- **Risk.** Collapse after 3–4 rounds. Ambiguous items can land in the band through noise.
+- **Risk.** Collapse within a few rounds (pseudo-label loops such as R-Zero peak after 1–3 iterations, earlier for smaller models). Ambiguous items can land in the band through noise.
 - **First experiment.** At the same token budget, compare a prompted generator with a trained 7B setter. Log valid yield, band yield and label accuracy on a gold holdout every round. *Success:* more valid in-band tasks per GPU-hour, with label accuracy stable for ≥ 3 rounds.
 
 ### E2 · SvS: variants built from the policy's own correct solutions
@@ -410,7 +410,7 @@ Build these once static operators stop filling the band. They follow the stabili
 *Pitch:* bridge to real problems the policy cannot yet solve.
 - **Mechanism / seeds / verifier.** [GASP](https://arxiv.org/abs/2603.15957) generates an easier lemma (p ∈ [0.3, 0.7]), then a harder lift of it (p ∈ [0.1, 0.5]), then returns to the goal. [SOAR](https://arxiv.org/abs/2601.18778) instead rewards a teacher by the student's measured improvement on a fail@128 set, which the teacher never sees.
 - **Evidence.** GASP solved 11 of 146 coding problems at pass@100 = 0, where AZR and standard RL solved none. SOAR gave 4× pass@1 and 2× pass@32 on MATH-hard. Only 32.8% of SOAR's useful questions had fully correct solutions: bridge tasks need to be well-posed more than correct.
-- **Effect / risk.** The only route here aimed directly at pass@k = 0 targets. Risks: inner-loop cost, and contamination if the teacher sees the goals.
+- **Effect / risk.** The only generator-side route here aimed at specific real pass@k = 0 targets (G6 attacks such items with scaffolds instead). Risks: inner-loop cost, and contamination if the teacher sees the goals.
 - **First experiment.** Take 100 real items at pass@64 = 0. *Success:* more items unlocked (pass@k > 0) than standard RL at equal compute.
 
 ### E4 · Anchored bug-injection self-play for SWE
@@ -418,7 +418,7 @@ Build these once static operators stop filling the band. They follow the stabili
 
 *Pitch:* one policy both breaks and repairs repositories, anchored to real bugs.
 - **Mechanism / seeds / verifier.** Inject by removing hunks, reverting commits, or layering higher-order faults from failed repairs. Check with inverse mutation testing and give −1 for inconsistent artifacts ([SSR](https://arxiv.org/abs/2512.18552)). Anchor with an embedding-similarity reward toward real bugs (λ = 0.20) and 20% reference bugs in the fixer's training data ([Anchored Self-Play](https://arxiv.org/abs/2607.03523)).
-- **Evidence.** SSR gained +10.4 on SWE-bench Verified and +7.8 on SWE-Bench Pro, but showed gibberish instability, and its generated issues copied the test patches. Unanchored self-play later degraded on human bugs; anchoring gave +7.0 pp on average (+3.4 pp on human bugs).
+- **Evidence.** SSR gained +10.4 on SWE-bench Verified and +7.8 on SWE-Bench Pro, but showed gibberish instability, and its generated issues copied the test patches. Unanchored self-play later degraded on human bugs; anchoring gave +7.0 pp on average (+3.4 pp on human bugs). Anchoring has been shown only for function-level repair (BigCodeBench-derived tasks), not at repository scale.
 - **Effect / risk.** Unlimited SWE tasks without human issues. Risks: gibberish instability, issue texts that leak the test patch, drift from human bugs without anchoring.
 - **First experiment.** Anchored vs unanchored self-play on 50 repositories. *Success:* the fix rate on human bugs rises round after round.
 
@@ -460,7 +460,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 
 *Pitch:* hard items need evidence from channels that fail differently.
 - **Mechanism.** Execution, small-input brute force, a verifier from another model family and, where possible, a formal kernel; measure TPR and FPR per channel per difficulty decile on a gold-labelled subset.
-- **Evidence.** With J = TPR − FPR > 0 incorrect modes die out; with J < 0 they grow ([RLVεR](https://arxiv.org/abs/2601.04411)). Within-group verifier errors correlate at 0.53, so 8 completions are worth about 1.70 independent votes; cross-family channels add 0.0913 marginal information vs 0.0126 for same-model repeats ([VStress](https://arxiv.org/abs/2609.36958)). Unverified majority answers are wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 ([T³RL](https://arxiv.org/abs/2603.02203)). Under count-matched RFT, admitting 25% false positives costs 1.58 pp while discarding 75% of true positives costs 0.03 pp (note 22): tune gates for precision.
+- **Evidence.** With J = TPR − FPR > 0 incorrect modes die out; with J < 0 they grow ([RLVεR](https://arxiv.org/abs/2601.04411)). Within-group verifier errors correlate at 0.53, so 8 completions are worth about 1.70 independent votes ([Verifier-error correlation](https://arxiv.org/abs/2609.06386)); cross-family channels add 0.0913 marginal information vs 0.0126 for same-model repeats ([VStress](https://arxiv.org/abs/2609.36958)). Unverified majority answers are wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 ([T³RL](https://arxiv.org/abs/2603.02203)). Under count-matched RFT, admitting 25% false positives costs 1.58 pp while discarding 75% of true positives costs 0.03 pp (note 22): tune gates for precision.
 - **Effect / risk.** Keeps J > 0 on the hardest items. Risk: cost grows with channels; add one only while hardest-decile J improves.
 - **First experiment.** 300 gold-labelled hard items stratified by difficulty. *Success:* portfolio J on the hardest decile clearly exceeds the best single channel.
 
@@ -478,7 +478,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 
 *Pitch:* certify that a rewrite kept the label by editing in an executable IR, not by asking an LLM.
 - **Mechanism.** Lift the seed into a program, SQL query, state machine or tool trace; apply the operator there (shard, obfuscate, abstract); re-render; certify by re-execution equivalence plus cycle consistency; check sufficiency with a QuestBench-style solver.
-- **Why novel.** [Lost in Conversation](https://arxiv.org/abs/2505.06120) needed 1–4 hours of manual work per task, CLARITI validated 50 of 1,500 rewrites, and MQR and SvS audit preservation with LLMs. Note 21 lists solver-backed CONCAT equivalence and shard-necessity checks for code, SQL and tool tasks as missing; the math analogue works (MathCAMPS cycle consistency: 97.7% of survivors faithful).
+- **Why novel.** [Lost in Conversation](https://arxiv.org/abs/2505.06120) needed 1–4 hours of manual work per task type (90–120 sharded instructions each), CLARITI validated 50 of 1,500 rewrites, and MQR and SvS audit preservation with LLMs. Note 21 lists solver-backed CONCAT equivalence and shard-necessity checks for code, SQL and tool tasks as missing; the math analogue works (MathCAMPS cycle consistency: 97.7% of survivors faithful).
 - **Effect / risk.** Removes the manual or LLM-audit bottleneck for interaction and obfuscation operators. Risk: lifting natural text into an IR can itself lose information.
 - **First experiment.** IR-certified vs LLM-audited rewrites on 500 SQL-backed tool tasks, hand audit as ground truth. *Success:* lower label error at equal yield.
 
@@ -538,7 +538,7 @@ def route(item, p_hat, history):
 
 *Pitch:* spend rollouts where the signal is before you buy new tasks.
 - **Mechanism.** Pilot 16 rollouts per item, skip items with p̂ > 0.75, defer those with p̂ < 0.125, and commit 48 to the rest ([Pilot-Commit](https://arxiv.org/abs/2605.26606)). Allocate rollouts by knapsack ([Knapsack RL](https://arxiv.org/abs/2509.25849)). Recycle zero-variance items instead of deleting them ([query recycling](https://arxiv.org/abs/2606.10709)).
-- **Evidence.** Pilot-Commit needs 1.9× fewer rollouts than GRPO and 4.0× fewer than DAPO. Knapsack allocation is worth about 2× compute, and 577 prompts labelled "extremely hard" produced positives during training. About 20% of recycled queries later carried signal, supplying about three-quarters of accepted groups late in training. A pass@6 = 0 label is noisy: 10–29% of such items are reachable under perturbed decoding.
+- **Evidence.** Pilot-Commit needs 1.9× fewer rollouts than GRPO and 4.0× fewer than DAPO. Knapsack allocation is worth about 2× compute, and 577 prompts labelled "extremely hard" produced positives during training. About 20% of unique queries flipped from zero-variance to signal-bearing, and recycled queries supplied about three-quarters of accepted groups late in training. A pass@6 = 0 label is noisy: 10–29% of such items are reachable under perturbed decoding.
 - **Effect / risk.** About 2× compute-equivalent before buying any new task. Risk: a rare success on a low-p item may be a verifier false positive; spot-check it with a second verifier (note 18).
 - **First experiment.** A/B test on the current run. *Success:* equal accuracy with fewer rollouts.
 
@@ -547,7 +547,7 @@ def route(item, p_hat, history):
 
 *Pitch:* let measured transfer, not generator opinion, decide which operator gets the budget.
 - **Mechanism.** Each arm is an operator family in a domain. Its reward is the held-out delta from a short probe run, or learning progress (TSCL |slope|). Keep a floor for exploration.
-- **Why.** Note 01 lists this as open. Yield varies 6× across mutation axes (7.7–45.5%, [Trading Human Curation](https://arxiv.org/abs/2606.03800)). The bar is high: in [DataFlex-RL](https://arxiv.org/abs/2609.06107), none of 8 selection methods and none of 3 adaptive mixtures beat uniform sampling or a fixed equal mix.
+- **Why.** Note 01 lists this as open. Yield varies 6× across mutation axes (7.7–45.5%, [Trading Human Curation](https://arxiv.org/abs/2606.03800)). The bar is high: in [DataFlex-RL](https://arxiv.org/abs/2609.06107), none of 8 selection or reweighting methods beat uniform sampling, and none of 3 adaptive mixtures beat a fixed equal mix.
 - **Effect / risk.** Moves budget to operators that transfer. Risk: noisy short-probe deltas against a high equal-mix bar.
 - **First experiment.** Run a 6-arm bandit against an equal mix over 8 seeds. *Kill* it if the paired CI includes zero.
 
@@ -580,7 +580,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 - **Evidence.**
   - Under identical PPO, Llama-3.2-3B plateaued at about 30% on Countdown while Qwen-2.5-3B reached about 60%. Priming closed the gap, and traces with **wrong** final answers worked as well as correct ones ([Cognitive behaviors](https://arxiv.org/abs/2503.01307)).
   - For agentic search, behavior-filtered trajectories beat outcome-filtered ones ([Behavior Priming](https://arxiv.org/abs/2510.06534)).
-  - [SkillFactory](https://arxiv.org/abs/2512.04072) scored 2.8% vs 11.7% after SFT, but 25.1% vs 21.2% after GRPO.
+  - On hard Countdown, [SkillFactory](https://arxiv.org/abs/2512.04072) scored 2.8% vs 11.7% for R1-distillation after SFT, but 25.1% vs 21.2% after GRPO.
 - **Effect / risk.** Cheaply unblocks RL on hard variants. Risk: priming can teach reflection for its own sake; judge by an RL probe.
 - **First experiment.** Prime on the teacher's *failed* attempts at your hardest synthetic items. *Success:* a 200-step RL probe beats the unprimed checkpoint.
 
@@ -643,7 +643,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 
 *Pitch:* find what your generator leaks before the policy learns to exploit it.
 - **Mechanism.** Chi-square tests on answer-position and answer-value marginals; partial-input baselines; an LLM-ID classifier; n-gram and embedding decontamination, including variant contamination. Let an external RNG make every structural random choice.
-- **Evidence.** A five-way LLM-ID classifier reaches 97.1% accuracy, and students trained on two different teachers are 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)). LLM MCQ generators put the answer first 47.9–57.9% of the time ([2605.01846](https://arxiv.org/abs/2605.01846)). Preference leakage is 23.6% when the judge is also the generator, against 2.8% across model series (note 19).
+- **Evidence.** A five-way LLM-ID classifier reaches 97.1% accuracy, and students trained on two different teachers are 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)). LLM MCQ generators put the answer first 47.1–57.9% of the time, against 25% for uniform placement over four options ([2605.01846](https://arxiv.org/abs/2605.01846)). Preference leakage is 23.6% when the judge is also the generator, against 2.8% for a judge from the same family but a different series (note 19).
 - **Effect / risk.** Removes exploitable regularities before RL. Risk: fixing one signature can create another; re-run after every generator change.
 - **First experiment.** Run the audit per generator and operator. *Success:* partial-input baselines are at chance and marginals are flat.
 
@@ -653,7 +653,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* one number, cost / (validity yield × in-band yield), decides where the next dollar goes.
 - **Mechanism.** Log every candidate's lineage, operator, gate outcome, rejection reason and pilot p̂.
 - **Evidence.**
-  - Costs: about $0.05 per accepted RST task; $19.66 per built OpenSWE environment and about $163 per retained one.
+  - Costs: about $0.05 per accepted RST task; $19.66 per built OpenSWE environment, about $99 per retained one, and about $163 per retained one once trajectory sampling is included (derived, note 18).
   - Yields range from 2.25% (SWE-Next) to about 50% (SWE-Factory), and vary 7.7–45.5% across mutation axes.
   - Profiling alone was about 36% of rollout tokens in note 18's worked example.
   - Training compute dwarfed generation spend: about $20K per arm, against about $16 for 319 variants ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
@@ -665,7 +665,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 
 *Pitch:* diversity collapses silently. Measure it on solutions, not on wording.
 - **Mechanism.** Similarity over canonical solver code ([R-Diverse](https://arxiv.org/abs/2602.13103)) or masked SQL templates; nearest-neighbour similarity per round; pass@k tracking. *Novel extension:* index a QD archive by clusters of policy-failure embeddings instead of hand-picked skill tags (note 14 lists this as unexplored).
-- **Evidence.** RST's nearest-neighbour similarity rose from 0.22 to 0.46 across rounds. Evol-Instruct pushed pass@8 below the untuned backbone (54.2 vs 55.1, [EvoTD](https://arxiv.org/abs/2605.11666)). [ACES](https://arxiv.org/abs/2310.10692) keeps 21,700 skill-combination niches. No diversity metric has yet been shown to predict RL gains (note 19).
+- **Evidence.** RST's nearest-neighbour similarity rose from 0.22 to 0.46 across rounds. Evol-Instruct pushed pass@8 below the untuned backbone (54.2 vs 55.1, [EvoTD](https://arxiv.org/abs/2605.11666)). [ACES](https://arxiv.org/abs/2310.10692) indexes its archive by 21,700 possible skill-combination niches. Several diversity metrics correlate with outcomes in isolation, but which one best predicts held-out RL gains on a hardened pool is untested (note 19).
 - **Effect / risk.** Catches collapse before downstream damage. Risk: surface-embedding metrics cannot tell reskins from new skills (note 11).
 - **First experiment.** Correlate 3 diversity metrics with the held-out RL deltas of 10 pools. *Success:* one metric ranks the pools correctly.
 
@@ -682,51 +682,59 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 
 ## 11. Theme J: Novel combinations drawn from the open problems
 
-All eight ideas are `Novel` with **Proposal** evidence. Each is paired with the open problem it addresses and a kill criterion.
+All eight ideas are `Novel` with **Proposal** evidence. Each is paired with the open problem it addresses. Its first experiment's success metric doubles as its kill criterion (§14.5), and J1 and J3 add an explicit one.
 
 ### J1 · One seed, four interaction operators (effort M)
+- **Pitch.** Turn one saturated single-turn seed into a multi-turn, long-horizon, adversarial episode without losing its label.
 - **Mechanism.** Deliver one verifiable seed as sharded turns (N), across a horizon beyond the context window (H), with K injected tool outputs and a partner who withholds one needed fact. The label is preserved: the CONCAT or oracle view must still pass.
 - **Why.** Note 21: no open pipeline composes these operators or measures how their knobs interact. Each operator works alone: CONCAT keeps 95.1% of FULL; MemAgent trained at 32K–60K tokens keeps 71.09% at 3.5M; AgentDojo supplies the injection; CLARITI supplies the withholding.
 - **Effect / risk.** Realistic multi-turn difficulty from single-turn seeds. Risks: degenerate ask/abstain policies and simulator leakage (C4).
 - **First experiment.** A 2⁴ factorial design on 500 seeds. *Success:* identify which knobs interact super-additively. *Kill* if training on mixed cells transfers no better than training on single operators.
 
 ### J2 · "Harder-than" variants checked by the Lean kernel (effort M)
+- **Pitch.** Make formal variants provably at least as hard as their seed instead of hoping that sampling finds harder ones.
 - **Mechanism.** Accept a formal variant only with a kernel-checked proof that it implies the seed (or generalizes it), plus a certificate that a fixed automation portfolio (`aesop`, `exact?`) fails on it. Hardness is then at least the seed's by construction.
 - **Why.** Note 03: no pipeline enforces a verified "harder-than" relation at scale. Related certificates: InternGeometry's X_raw vs X_add, and LeanConjecturer's automation floor. Ineq-Comp shows that simple composition already breaks provers.
 - **Effect / risk.** Hardness by construction rather than by sampling. Risk: drift toward trivially stronger statements; keep a triviality/elegance filter.
 - **First experiment.** 1k Lean seeds, compared against STP-style conjecturing. *Success:* higher in-band yield with zero false statements.
 
 ### J3 · Hidden-invariant generators for transformative difficulty (effort M)
+- **Pitch.** Force a new strategy, not a longer recombination, by hiding a short invariant behind an intractable surface.
 - **Mechanism.** Generate instances whose natural solution is intractable at the chosen size but which have a short hidden invariant (periodicity, symmetry, reversibility). Verify by brute force at small n and with an invariant-based checker at large n. Warm up with dense rewards (DELTA-style).
 - **Why.** Transformative generalization is still about zero ([OMEGA](https://arxiv.org/abs/2506.18880), DELTA), and note 10 names exactly this direction. Horizon generalization did not transfer to harder Sudoku techniques (note 20).
 - **Effect / risk.** Targets new-strategy difficulty, which no current operator reliably produces. Risk: small-n pattern matching instead of insight; vary surface form.
 - **First experiment.** Train on 3 families at small n. *Kill* if nothing at large n is unlocked.
 
 ### J4 · An online re-complexification service inside RL (effort M–L)
+- **Pitch.** Re-harden each item the moment it saturates, instead of regenerating the pool offline between stages.
 - **Mechanism.** A generator service reads the trainer's per-item p̂ stream. When an item saturates, it applies one operator (hop, fuzz, distractor, constraint), chosen by G3 priors and I3 yields. It gates the child and injects it with a version tag under the same domain quota. The parent moves to replay.
-- **Why.** Notes 07 and 18: online re-complexification is rare, and no framework generates or re-levels tasks online (SkyRL marks dropped groups as consumed). The closest published mechanisms are [RODS](https://arxiv.org/abs/2606.19047), which resamples isomorphic variants in the [0.20, 0.85] band and retires tasks above 0.95, and the RLAnything acceptance rule.
+- **Why.** Notes 07 and 18: online re-complexification is rare, and no open RL framework generates or re-levels tasks online as a built-in feature (SkyRL marks dropped groups as consumed). The closest published mechanisms are [RODS](https://arxiv.org/abs/2606.19047), which resamples isomorphic variants in the [0.20, 0.85] band and retires tasks above 0.95, and the RLAnything acceptance rule.
 - **Effect / risk.** Keeps the band full without stage-level regeneration. Risks: stale difficulty labels in async training and mix drift; replace within domain quotas.
 - **First experiment.** Compare against offline regeneration between stages, at equal compute. *Success:* a higher effective-prompt ratio across the run and a held-out gain. Report the staleness of difficulty labels.
 
 ### J5 · A hacker–fixer loop inside recursive escalation (effort S–M)
+- **Pitch.** Measure, and cap, how exploitable tasks become as recursive escalation makes them longer.
 - **Mechanism.** Run a hacker agent on every accepted child in each RST round. Fix, re-validate, and log the exploit rate by round and by operator.
-- **Why.** Note 16 asks whether hackability grows with escalation; nobody reports exploit rates by round. The shortcut counts (40 at complexity levels 1–10 vs 458 at 11–20) suggest it does.
+- **Why.** Note 16 asks whether hackability grows with escalation; nobody reports exploit rates by round. Shortcut counts on inductive-rule tasks (40 at complexity levels 1–10 vs 458 at 11–20, [IPT](https://arxiv.org/abs/2604.15149)) suggest it may, since shortcuts concentrate in the most complex items.
 - **Effect / risk.** Keeps recursive escalation safe to train on. Risk: extra cost per round.
 - **First experiment.** 5 rounds on 200 seeds, with and without the loop. *Success:* an exploit-by-round curve, and fewer reward-hacking incidents in downstream RL.
 
 ### J6 · A typed constraint DSL with SMT witnesses for IF self-play (effort M)
+- **Pitch.** Generate instruction-following constraint sets that are provably satisfiable and aimed at the pass-rate band.
 - **Mechanism.** Write constraints in a typed Scope/Target/Range DSL ([ScopeIF](https://arxiv.org/abs/2609.32189)). A solver proves the constraint set jointly satisfiable and emits a witness skeleton. The self-play generator is rewarded for hitting the pass-rate band, not for raw failure as in [SEIF](https://arxiv.org/abs/2605.07465), with anti-degeneracy terms. Push past the 5–7-constraint phase transition toward agent system prompts.
 - **Why.** Note 08 lists both formal satisfiability and learnability-shaped IF generators as open. "Output JSON" is jointly unsatisfiable with 9 of 24 instructions, and AgentIF averages 11.9 constraints per instruction.
 - **Effect / risk.** No unsatisfiable prompts, and direct band targeting. Risk: DSL constraints may be less natural; hold out natural constraint families.
 - **First experiment.** A DSL with 30 constraint types, compared against an LLM conflict filter. *Success:* zero unsatisfiable prompts and a higher in-band yield.
 
 ### J7 · First-error localization for agent trajectories, labelled by replay (effort M)
+- **Pitch.** Get exact first-error process labels for agent trajectories from environment replay rather than from judges.
 - **Mechanism.** In a replayable environment, corrupt one action of a successful trajectory and re-simulate. If the checker then fails, label that step as the first error. Use the labels for verifier and process-reward training, and for "resume from state k" tasks.
 - **Why.** Note 20: exact first-error labels exist for logic, math and code ([2605.02395](https://arxiv.org/abs/2605.02395)) but are largely missing for multi-turn agents.
 - **Effect / risk.** Exact process labels for agents. Risk: constructed errors may not look on-policy (note 20); select corruptions by policy likelihood.
 - **First experiment.** Collect 5k labels and train an agent process reward model (PRM). *Success:* better accuracy and best-of-N gains than a PRM trained on judge labels.
 
 ### J8 · Research-mined monthly tasks with checkpoint rewards (effort M)
+- **Pitch.** A self-refreshing supply of uncontaminated research-level tasks, with partial credit through checkpoints.
 - **Mechanism.** Every month, harvest post-cutoff statements and PRs, rewrite them to be self-contained, filter to the policy's band, and decompose them into checkpoints with machine-verifiable answers.
 - **Why.** Note 23. [RealMath](https://arxiv.org/abs/2505.12575) turned 14,747 theorems into 280 usable items, about 94% valid. [LemmaBench](https://arxiv.org/abs/2602.24173) accuracy rose from 12.3% to 40.8% in nine months, so freshness decays. [CritPt](https://arxiv.org/abs/2509.26574) splits 71 challenges into 190 checkpoints. [ResearchMath](https://arxiv.org/abs/2605.28003) SFT gave +2.1 even though only 3.7% and 4.3% of trajectories were judged correct.
 - **Effect / risk.** A self-refreshing supply of hard, uncontaminated tasks. Risks: low yield, unrefereed results, and share-alike license obligations (note 23).
@@ -742,7 +750,7 @@ All eight ideas are `Novel` with **Proposal** evidence. Each is paired with the 
 - **Confidence (C):** Strong = 5, Moderate = 4, Emerging = 3, Proposal = 2.
 - **Effort (E):** S = 1, M = 2, L = 4.
 
-The formula favors cheap, label-preserving work by design. The highest-*impact* items (I = 5) are G1 and D1, followed by B1.
+The formula favors cheap, label-preserving work by design. The highest-*impact* items (I = 5) are G1 and D1; they rank below the S-effort items only because they cost more to build.
 
 | # | Idea | Status | Evidence | I | C | E | Score | First deliverable |
 |---|---|---|---|---|---|---|---|---|
@@ -864,9 +872,10 @@ ADOPT    iff  paired 95% CI excludes 0 across 8–12 matched seeds
           and the gain holds on post-cutoff items, a held-out generator/operator family,
               and a non-Qwen model.
 STOP     generator/self-play loops after ~3 rounds unless the held-out metric is still rising
-         (WizardCoder best after 3; SEIF, UltraIF; R-Zero peaked within 3–4 iterations).
+         (WizardCoder best after 3; SEIF saturated after 3; UltraIF's third DPO round diverged;
+         R-Zero peaked after 1–3 iterations, earlier for smaller models).
 KILL     any Proposal whose first experiment misses its success metric; any operator whose
          post-fix exploit rate stays > 0 or whose accepted items fail hand audit.
 ```
 
-Adaptive mixtures and selection policies must beat a fixed equal mix under this rule before they replace it. In DataFlex-RL, none of 13 policies tested with 12 matched seeds did ([DataFlex-RL](https://arxiv.org/abs/2609.06107)).
+Adaptive mixtures and selection policies must beat uniform sampling or a fixed equal mix under this rule before they replace it. In [DataFlex-RL](https://arxiv.org/abs/2609.06107) (13 configurations, 12 matched seeds each), none of 8 selection or reweighting methods beat uniform sampling and none of 3 adaptive mixtures beat a fixed equal mix.
