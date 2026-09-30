@@ -224,6 +224,7 @@ Once atoms are saturated, composition is the most reliable source of new difficu
 - **Pitch.** Move beyond chains to diamonds and non-local dependencies, with exact checks at merge nodes.
 - **Mechanism / seeds / verifier.** A DAG generator whose topology knob runs chain → tree → diamond → coupled; exact merge-node values supply partial or process reward.
 - **Why it is novel.** Branch–merge and non-local dependencies still degrade sharply after composed training, and which data fixes this is open ([He et al.](https://arxiv.org/abs/2609.19465); note 10).
+- **Effect / risk.** Targets the non-local coordination that chains never exercise. Risk: merge-node rewards invite partial-completion hacking; keep the final answer as the gate.
 - **First experiment.** Chain-only vs a topology-mixed curriculum with merge-node rewards at matched compute. *Success:* diamond and coupled accuracy on held-out topologies rises without losing chain accuracy.
 
 ---
@@ -247,6 +248,7 @@ These keep the answer and change what the model is shown or asked. Their main ri
 *Pitch:* one verified artifact yields harder inverse tasks.
 - **Mechanism / seeds / verifier.** *Math:* mask a given and ask for it from the answer ([MetaMath](https://arxiv.org/abs/2309.12284) FOBAR/SV; "if the answer is 42, what is z?", [2605.28388](https://arxiv.org/abs/2605.28388)); brute-force the domain for uniqueness (the trailing-zeros inversion has five solutions, 100–104, so ask for the smallest). *Code:* abduction (input for a given output), induction (function from I/O) ([Absolute Zero](https://arxiv.org/abs/2505.03335)), or tests that separate right from wrong code ([CURE](https://arxiv.org/abs/2506.03136)); execution grades.
 - **Evidence.** 20K added MetaMath samples gave +2.3 (FOBAR) and +2.6 (SV) GSM8K points vs +0.4 for rephrasing. Caveats: inverse physics questions transferred less than forward ones (5.84 vs 13.15 IPhO, [Sim2Reason](https://arxiv.org/abs/2604.11805)), and AZR-style self-play mostly sharpens (note 09).
+- **Effect / risk.** Backward reasoning and variety at no labelling cost. Risk: non-unique inverses and weaker transfer than forward items; keep inversions a minority.
 - **First experiment.** Invert 1k seeds with uniqueness enforcement as ≤ 30% of the mix. *Success:* higher in-band yield, no loss in forward accuracy.
 
 ### C3 · Static → interactive: put the parameters behind tools
@@ -314,6 +316,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 *Pitch:* same question, messier data, exact gold.
 - **Mechanism / seeds / verifier.** Corrupt a clean table in logged ways (duplicates, mixed date formats, cents vs dollars, nulls) and add genuine outliers that must *not* be removed; compute gold on the clean source under stated, discoverable cleaning rules.
 - **Why novel.** Note 16 finds label-preserving corruption only in evaluation and cleaning studies, where profiling baselines beat LLM agents at detection (F1 0.561 vs 0.421). Data tasks do respond to synthetic training: [DSGym](https://arxiv.org/abs/2601.16344)-SFT (2k execution-verified queries) took Qwen3-4B from 2.9% to 33.07% on DABStep-hard. [SandMLE](https://arxiv.org/abs/2604.04872)-style micro-scale data keeps rollouts more than 13× faster.
+- **Effect / risk.** Robustness to messy data, where agents trail simple profilers. Risk: unstated cleaning conventions turn difficulty into ambiguity.
 - **First experiment.** 5 corruption types × 3 intensities on 300 analysis tasks. *Success:* pass rate falls monotonically with intensity, and real dirty-data evaluations improve.
 
 ### D4 · Steered simulator perturbations, noise curricula and infeasible variants
@@ -330,6 +333,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 
 *Pitch:* the original good state is the oracle.
 - **Mechanism / seeds / verifier.** An agent degrades a working environment (mis-pinned dependency, missing environment variable, broken permissions) until tests fail ([CLI-Gym](https://arxiv.org/abs/2602.10999)); for workbooks, strip derived artifacts in dependency order ([WTM](https://arxiv.org/abs/2608.07873)). Expose only symptoms, forbid leftover backups, and filter recoveries that use cached git or conda state.
+- **Why it should work.** CLI-Gym's degraded-environment tasks (1,655 from 29 repositories) gave LiberCoder +21.1 on TB1.0 and +12.9 on TB2.0 from 291 curated trajectories, and WTM scores collapse once ≥ 5 derived artifacts must be rebuilt.
 - **Effect / risk.** Diagnosis-heavy tasks with free labels. Risk: degradation residue reveals the fix.
 - **First experiment.** Degrade 200 containers with 1–3 faults each. *Success:* no-op fails, oracle passes, in-band yield, no recovery through a cache.
 
@@ -339,6 +343,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 *Pitch:* build long, coupled workflows from validated phases.
 - **Mechanism / seeds / verifier.** Each phase has a checker; phase k's validated end state becomes phase k+1's start state ([Qwen-CUA](https://arxiv.org/abs/2608.02352)); screen chains with ChainWorld's compatibility rules; train end to end on the sum or conjunction of phase checkers. Later checkers must not depend on artifact IDs created by one particular earlier solution.
 - **Evidence.** Qwen-CUA reaches 86.2 on OSWorld-Verified with about 40,000 tuple-format tasks. Note 15 names phase-state chaining plus compatibility checks as the most promising route to verified 100–500+-step RL tasks, which no open pipeline yet produces at scale. Lengthening horizons alone destabilizes RL; reduce them first with macro-actions and subgoals ([2605.02572](https://arxiv.org/abs/2605.02572)).
+- **Effect / risk.** Long, coupled workflows with state-grounded partial credit. Risks: long horizons amplify checker false positives, so strengthen checkers (note 15).
 - **First experiment.** 4-phase chains in 3 applications. *Success:* full-chain success on held-out applications; compare sum vs conjunction rewards.
 
 ### D7 · Co-harden capability and security, with benign twins
@@ -347,6 +352,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 *Pitch:* adversarial content in the untrusted slots of capability environments is a durable difficulty source.
 - **Mechanism / seeds / verifier.** Inject attacker text into tool outputs, emails and files at randomized reachable positions; reward = task completed AND injection resisted, from state (e.g. R_task − R_injected, [ToolHazard](https://arxiv.org/abs/2608.11878)); a population of adaptive attackers ([GPT-Red](https://arxiv.org/abs/2607.26115)); benign twins against over-refusal.
 - **Evidence.** [CoER](https://arxiv.org/abs/2609.07529) raised utility from 63.2% to 76.3% while attack success fell from 38.5% to 0.2% (its own evaluation). Removing [IH-Challenge](https://arxiv.org/abs/2603.10521)'s anti-over-refusal split dropped the over-refusal score from 0.950 to 0.831 and helpfulness from 0.773 to 0.613. Adaptive attacks broke all 8 evaluated defenses at > 50% attack success.
+- **Effect / risk.** Durable difficulty that does not saturate like static attack templates. Risk: over-refusal without benign twins.
 - **First experiment.** Inject into 500 capability tasks. *Success:* utility holds, attack success falls against a *held-out* adaptive attacker, over-refusal stays flat.
 
 ### D8 · Goal switch: closed → open-ended optimization, and correctness-gated performance
@@ -364,6 +370,7 @@ For agentic seeds, much of the difficulty lives in the environment and the verif
 *Pitch:* turn saturated tested code into "implement + prove", graded soundly on the solution side.
 - **Mechanism / seeds / verifier.** Lift the seed into a spec validated by its tests (soundness and completeness lemmas, mutated-output spectests); climb the stage ladder (code → spec → proof → end-to-end) and the language ladder (Dafny → Verus → Lean); use band-rewarded proposers (ANCORA: reward when 1 of K attempts verifies; KernelZero: 1 − 2|p − 0.5|).
 - **Evidence.** The [ATLAS](https://arxiv.org/abs/2512.10173) TACO lift succeeds on 47% of EASY seeds and about 20% of HARD ones. [VeriContest](https://arxiv.org/abs/2605.08553): NL→code 92.18% vs end-to-end 5.29%; [AlgoVeri](https://arxiv.org/abs/2602.09464): Dafny 40.3% vs Lean 7.8%. [PSV](https://arxiv.org/abs/2512.18160) reaches 65.63% vs 34.46% for plain RFT, and dropping solution verification costs 51.5% relative. Specs get gamed (`assume(false)` spread from one program to all in [AlphaVerus](https://arxiv.org/abs/2412.06176)); use at least two spec defenses.
+- **Effect / risk.** A sound, non-saturating check on the solution side. Risk: the attack surface moves to the spec; budget for spec hardening.
 - **First experiment.** Lift 1k saturated functions; train along the stage ladder. *Success:* higher verified rate on held-out specs with a clean spec-strength audit.
 
 ---
@@ -394,6 +401,7 @@ Build these once static operators stop filling the band. They follow the stabili
 *Pitch:* spawn harder, answer-preserving variants from what the policy barely solves.
 - **Mechanism / seeds / verifier.** For items solved 12.5–50% of the time, give the policy one of its correct solutions and ask for structurally different problems with the same answer. Reward only variants whose solve rate lies in [12.5%, 62.5%], and screen for leaked answers.
 - **Evidence.** +18.3 and +22.8 pass@32 on AIME24 and AIME25, with entropy stable ([SvS](https://arxiv.org/abs/2508.14029)). The naive reward "the variant is solvable" gets gamed by leaking hints.
+- **Effect / risk.** Expands the boundary (large-k pass@k), not only pass@1. Risk: answer or hint leakage into variants.
 - **First experiment.** Add SvS to an existing GRPO run. *Success:* large-k pass@k beats the baseline, and entropy does not collapse.
 
 ### E3 · Goal-anchored stepping stones for pass@k = 0 targets
@@ -402,6 +410,7 @@ Build these once static operators stop filling the band. They follow the stabili
 *Pitch:* bridge to real problems the policy cannot yet solve.
 - **Mechanism / seeds / verifier.** [GASP](https://arxiv.org/abs/2603.15957) generates an easier lemma (p ∈ [0.3, 0.7]), then a harder lift of it (p ∈ [0.1, 0.5]), then returns to the goal. [SOAR](https://arxiv.org/abs/2601.18778) instead rewards a teacher by the student's measured improvement on a fail@128 set, which the teacher never sees.
 - **Evidence.** GASP solved 11 of 146 coding problems at pass@100 = 0, where AZR and standard RL solved none. SOAR gave 4× pass@1 and 2× pass@32 on MATH-hard. Only 32.8% of SOAR's useful questions had fully correct solutions: bridge tasks need to be well-posed more than correct.
+- **Effect / risk.** The only route here aimed directly at pass@k = 0 targets. Risks: inner-loop cost, and contamination if the teacher sees the goals.
 - **First experiment.** Take 100 real items at pass@64 = 0. *Success:* more items unlocked (pass@k > 0) than standard RL at equal compute.
 
 ### E4 · Anchored bug-injection self-play for SWE
@@ -410,6 +419,7 @@ Build these once static operators stop filling the band. They follow the stabili
 *Pitch:* one policy both breaks and repairs repositories, anchored to real bugs.
 - **Mechanism / seeds / verifier.** Inject by removing hunks, reverting commits, or layering higher-order faults from failed repairs. Check with inverse mutation testing and give −1 for inconsistent artifacts ([SSR](https://arxiv.org/abs/2512.18552)). Anchor with an embedding-similarity reward toward real bugs (λ = 0.20) and 20% reference bugs in the fixer's training data ([Anchored Self-Play](https://arxiv.org/abs/2607.03523)).
 - **Evidence.** SSR gained +10.4 on SWE-bench Verified and +7.8 on SWE-Bench Pro, but showed gibberish instability, and its generated issues copied the test patches. Unanchored self-play later degraded on human bugs; anchoring gave +7.0 pp on average (+3.4 pp on human bugs).
+- **Effect / risk.** Unlimited SWE tasks without human issues. Risks: gibberish instability, issue texts that leak the test patch, drift from human bugs without anchoring.
 - **First experiment.** Anchored vs unanchored self-play on 50 repositories. *Success:* the fix rate on human bugs rises round after round.
 
 ### E5 · Open replication of a learned (problem, environment, verifier) constructor
@@ -418,6 +428,7 @@ Build these once static operators stop filling the band. They follow the stabili
 *Pitch:* test the frontier claim that a trained task constructor drives the gains.
 - **Mechanism / seeds / verifier.** Train the constructor on reward = difficulty × correctness of the whole triplet. Use the pipeline build → self-test → leak-scrub → distinct solvers → inspector → repair, and re-audit the tasks at every RL run.
 - **Why novel.** [DeepSeek-V4.1-Flash](https://arxiv.org/abs/2609.19969) (§5.1.1) attributes "essentially all of the observed gains" to data and environment pipelines, but gives no reward formula and no ablation. The cheapest prompted baseline is [RLAnything](https://arxiv.org/abs/2602.02488): when accuracy exceeds 0.8, ask for a harder rewrite and accept it iff 0.2 < acc(q′) < acc(q).
+- **Effect / risk.** Potentially the largest lever if the frontier claim holds. Risk: the constructor games its own correctness scorer; keep an independent inspector.
 - **First experiment.** A three-arm matched-compute ablation: trained constructor, RLAnything-style prompted constructor, static pool. *Success:* the trained arm wins on validated in-band triplets per GPU-hour *and* on held-out gains. Kill it if it does not beat the prompted arm.
 
 ---
@@ -432,6 +443,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* no task enters a pool without an oracle, a self-scoring test and known-bad candidates.
 - **Mechanism.** The [Harbor](https://docs.harborframework.com/core-concepts/tasks/overview) layout (`instruction.md`, `task.toml`, `environment/Dockerfile`, `solution/solve.sh`, `tests/test.sh` → `/logs/verifier/reward.txt`). CI: oracle passes in a fresh sandbox; no-op fails; known-bad candidates fail; checkers hidden from proposers and agents; clean forbidden-pattern scan.
 - **Evidence.** [CUA-Gym](https://arxiv.org/abs/2605.25624) requires reward(golden) = 1 and reward(initial) = 0 with the checker written behind an information barrier; its models reach 62.1 / 72.6 on OSWorld-Verified. [Self-Challenging](https://arxiv.org/abs/2506.01716) ships a known-good solution and failure cases with every task. An empty-response agent passes 38% of τ-bench-Airline ([ABC](https://arxiv.org/abs/2507.02825)). In the Darwin Gödel Machine, objective hacking was more frequent when checkers were visible (note 14).
+- **Effect / risk.** Makes every later operator cheap to validate. Risk: endpoint tests do not prove that alternative valid solutions pass (note 15); add alternative-solution probes.
 - **First experiment.** Convert the pool; report failure rate per gate. *Success:* every accepted task passes the contract, and the shift in the pass-rate profile is documented.
 
 ### F2 · A pre-RL red-team harness, including a public/hidden verifier split
@@ -440,6 +452,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* attack every operator family before training on it.
 - **Mechanism.** Hacker–fixer–solver loop ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)); trivial-agent baselines and planted canaries; impossible variants with an abort option ([ImpossibleBench](https://arxiv.org/abs/2510.20270)); isomorphic-renamed twins rewarded only if both are right ([IPT](https://arxiv.org/abs/2604.15149)); truncated "master key" negatives for judges; read-only checksummed tests; a public diagnostic verifier with hidden scoring under a submission budget ([Kimi K3](https://arxiv.org/abs/2607.24653)).
 - **Evidence.** 323 of 1,968 terminal tasks (16%) were hackable from the description alone, and the loop cut attack success on KernelBench from 76% and 61% to 0%. GPT-5 exploited tests in 54–76% of impossible SWE-bench variants; an abort option cut this from 54% to 9%. RLVR models found 40 shortcuts at complexity levels 1–10 vs 458 at 11–20. Monitors still miss about 35–58% of cheating on complex SWE variants.
+- **Effect / risk.** Stops exploits before they become learned behavior; hacks learned in coding RL generalized to broad misalignment (note 11). Risk: overfitting to known exploit classes; rotate hackers.
 - **First experiment.** Harness 200 tasks per operator family. *Success:* post-fix exploit rate near zero with the solver still passing.
 
 ### F3 · A decorrelated verification portfolio with J tracking
@@ -448,6 +461,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* hard items need evidence from channels that fail differently.
 - **Mechanism.** Execution, small-input brute force, a verifier from another model family and, where possible, a formal kernel; measure TPR and FPR per channel per difficulty decile on a gold-labelled subset.
 - **Evidence.** With J = TPR − FPR > 0 incorrect modes die out; with J < 0 they grow ([RLVεR](https://arxiv.org/abs/2601.04411)). Within-group verifier errors correlate at 0.53, so 8 completions are worth about 1.70 independent votes; cross-family channels add 0.0913 marginal information vs 0.0126 for same-model repeats ([VStress](https://arxiv.org/abs/2609.36958)). Unverified majority answers are wrong on 25.85% of MATH-500, 46.07% of AMC and 73.33% of AIME 2024 ([T³RL](https://arxiv.org/abs/2603.02203)). Under count-matched RFT, admitting 25% false positives costs 1.58 pp while discarding 75% of true positives costs 0.03 pp (note 22): tune gates for precision.
+- **Effect / risk.** Keeps J > 0 on the hardest items. Risk: cost grows with channels; add one only while hardest-decile J improves.
 - **First experiment.** 300 gold-labelled hard items stratified by difficulty. *Success:* portfolio J on the hardest decile clearly exceeds the best single channel.
 
 ### F4 · Two-sided (privileged-information) solvability gates
@@ -456,6 +470,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* separate "hard" from "broken" before a p ≈ 0 item enters training.
 - **Mechanism.** Admit only if solvable with privileged information (hint, gold evidence, stronger teacher, large k) and unsolved without it.
 - **Evidence.** Hint-conditioned admission ([CLI-Universe](https://arxiv.org/abs/2606.22883)); pass@100 > 0 ([DeepSeek-V3.2](https://arxiv.org/abs/2512.02556)); pass@8 = 0 with pass@512 ≫ 0 from a verified-answer pool ([GLM-4.5](https://arxiv.org/abs/2508.06471)). Of 79 [EvoEnv](https://arxiv.org/abs/2605.14392) environments passing all mechanical layers, a stronger auditor judged 35 buggy; [HLE-Verified](https://arxiv.org/abs/2602.13964) kept only 668 of 2,500 items unchanged.
+- **Effect / risk.** Keeps label errors out of the p ≈ 0 tail, where they concentrate. Risk: difficulty is bounded by the privileged solver's ability.
 - **First experiment.** Gate the current p = 0 tail; hand-audit 100 accepts and 100 rejects. *Success:* rejects mostly broken, accepts low in label error.
 
 ### F5 · Solver-backed label-preservation certificates outside math
@@ -464,6 +479,7 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* certify that a rewrite kept the label by editing in an executable IR, not by asking an LLM.
 - **Mechanism.** Lift the seed into a program, SQL query, state machine or tool trace; apply the operator there (shard, obfuscate, abstract); re-render; certify by re-execution equivalence plus cycle consistency; check sufficiency with a QuestBench-style solver.
 - **Why novel.** [Lost in Conversation](https://arxiv.org/abs/2505.06120) needed 1–4 hours of manual work per task, CLARITI validated 50 of 1,500 rewrites, and MQR and SvS audit preservation with LLMs. Note 21 lists solver-backed CONCAT equivalence and shard-necessity checks for code, SQL and tool tasks as missing; the math analogue works (MathCAMPS cycle consistency: 97.7% of survivors faithful).
+- **Effect / risk.** Removes the manual or LLM-audit bottleneck for interaction and obfuscation operators. Risk: lifting natural text into an IR can itself lose information.
 - **First experiment.** IR-certified vs LLM-audited rewrites on 500 SQL-backed tool tasks, hand audit as ground truth. *Success:* lower label error at equal yield.
 
 ---
@@ -478,12 +494,15 @@ Harder tasks raise both label error and hackability ([Chapter 04](04-verificatio
 *Pitch:* replace static "hard sets" with generators whose knob follows the policy.
 - **Mechanism.** Give each family an integer knob and a sliding window: promote when top-level accuracy is ≥ 0.9, with τ_num = 8 × rollouts and a window of 4 ([RLVE](https://arxiv.org/abs/2511.07317)). Alternatives are a proportional controller ([SCALER](https://arxiv.org/abs/2601.04809)) or "raise κ if mean reward > 0.5" ([InternGeometry](https://arxiv.org/abs/2512.10534)).
 - **Evidence.** RLVE gave +3.37 on an already-saturated model vs +0.49 from more than 3× the compute of continued RL; a static low-cap range drove the effective-prompt ratio to 0. SCALER reached 54.25 vs 53.52 for RLVE. CBRL scored 44/50 on IMO-50 vs 38 without the schedule. Breadth pays: 400 environments × 40 instances beat 25 × 640 (75.19 vs 71.20, [ReSyn](https://arxiv.org/abs/2602.20117)), and selecting environments by ability coverage beat using all of them ([AES](https://arxiv.org/abs/2608.03571)).
+- **Effect / risk.** Keeps every family at the edge of competence all run. Risk: size knobs mostly add length (note 05); pair them with structural knobs (A9, B2).
 - **First experiment.** Wrap your 10 largest seed families. *Success:* effective-prompt ratio stays up and held-out scores improve.
 
 ### G2 · Route every prompt by pass rate: complexify, train or scaffold
 `Established` (components) / `Novel` (unified router) · **Moderate** · Effort **M**
 
 *Pitch:* one controller decides, per prompt, which operator to apply next.
+
+- **Mechanism.** Route each prompt on its current p̂: harden when saturated, train in band, gate then scaffold at zero. Every child re-enters through the admission gates.
 
 ```python
 def route(item, p_hat, history):
@@ -502,6 +521,7 @@ def route(item, p_hat, history):
   - [SETA](https://arxiv.org/abs/2607.10891) increases difficulty when r > 0.5, shifts context when 0 < r ≤ 0.5 and decreases it when r = 0. 77% of decreases and 60% of increases moved the pass rate as declared.
   - [QbQ](https://arxiv.org/abs/2608.01522) seeded from 8–15/16 and reached 16.46% AIME pass@1, against 11.36% when seeding from the hardest items.
   - Note 02 records that no public system unifies these three routes.
+- **Effect / risk.** Keeps the pool in band without manual passes. Risk: p̂ from small groups is noisy; use pilots and deferral (G4).
 - **First experiment.** Compare the router with "filter only" at equal compute. *Success:* a higher in-band share per batch and a held-out gain.
 
 ### G3 · Operator-conditioned difficulty priors
@@ -510,6 +530,7 @@ def route(item, p_hat, history):
 *Pitch:* predict a child's pass rate from its parent's pass rate and the operator's measured effect, and skip most profiling.
 - **Mechanism.** Maintain a Beta prior per (operator, parent band, domain), update it with a 4–8-rollout pilot, and commit rollouts only when the posterior is plausibly in band.
 - **Why.** Profiling cost about 36% of rollout tokens in note 18's worked example, and existing predictors are weak: pre-rollout agentic predictors reach ρ = 0.399 in distribution and 0.225 on unseen benchmarks ([2608.05797](https://arxiv.org/abs/2608.05797)); [PROPEL](https://arxiv.org/abs/2606.18284) probes reach 0.59–0.66 balanced accuracy; similarity-based priors break for adversarial variants. Operator effects, by contrast, are large (information removal: −70 to −100 points). Note 18 proposes exactly this.
+- **Effect / risk.** Could remove most profiling rollouts. Risk: adversarial or insight-hiding operators break smooth priors; always confirm with a small pilot.
 - **First experiment.** Log 5k (parent p̂, operator, child p̂) triples and fit the prior. *Success:* fewer rollouts at a fixed misfiling rate, with calibration error reported.
 
 ### G4 · Pilot–commit profiling, rollout reallocation and zero-variance recycling
@@ -518,6 +539,7 @@ def route(item, p_hat, history):
 *Pitch:* spend rollouts where the signal is before you buy new tasks.
 - **Mechanism.** Pilot 16 rollouts per item, skip items with p̂ > 0.75, defer those with p̂ < 0.125, and commit 48 to the rest ([Pilot-Commit](https://arxiv.org/abs/2605.26606)). Allocate rollouts by knapsack ([Knapsack RL](https://arxiv.org/abs/2509.25849)). Recycle zero-variance items instead of deleting them ([query recycling](https://arxiv.org/abs/2606.10709)).
 - **Evidence.** Pilot-Commit needs 1.9× fewer rollouts than GRPO and 4.0× fewer than DAPO. Knapsack allocation is worth about 2× compute, and 577 prompts labelled "extremely hard" produced positives during training. About 20% of recycled queries later carried signal, supplying about three-quarters of accepted groups late in training. A pass@6 = 0 label is noisy: 10–29% of such items are reachable under perturbed decoding.
+- **Effect / risk.** About 2× compute-equivalent before buying any new task. Risk: a rare success on a low-p item may be a verifier false positive; spot-check it with a second verifier (note 18).
 - **First experiment.** A/B test on the current run. *Success:* equal accuracy with fewer rollouts.
 
 ### G5 · A bandit over (operator × domain), driven by held-out deltas
@@ -526,6 +548,7 @@ def route(item, p_hat, history):
 *Pitch:* let measured transfer, not generator opinion, decide which operator gets the budget.
 - **Mechanism.** Each arm is an operator family in a domain. Its reward is the held-out delta from a short probe run, or learning progress (TSCL |slope|). Keep a floor for exploration.
 - **Why.** Note 01 lists this as open. Yield varies 6× across mutation axes (7.7–45.5%, [Trading Human Curation](https://arxiv.org/abs/2606.03800)). The bar is high: in [DataFlex-RL](https://arxiv.org/abs/2609.06107), none of 8 selection methods and none of 3 adaptive mixtures beat uniform sampling or a fixed equal mix.
+- **Effect / risk.** Moves budget to operators that transfer. Risk: noisy short-probe deltas against a high equal-mix bar.
 - **First experiment.** Run a 6-arm bandit against an equal mix over 8 seeds. *Kill* it if the paired CI includes zero.
 
 ### G6 · Make p ≈ 0 families learnable, in a fixed order
@@ -540,6 +563,7 @@ def route(item, p_hat, history):
   5. One off-policy trace per group ([LUFFY](https://arxiv.org/abs/2504.14945)).
   6. A dense per-test reward, then binary ([DELTA-Code](https://arxiv.org/abs/2509.21016)).
 - **Evidence.** Cog-DRIFT: +10.11 and +8.64 on items at pass@64 = 0. QuestA's annealed prefixes scored 63.26 vs 60.26 for a fixed 50% prefix; [Scaf-GRPO](https://arxiv.org/abs/2510.19807) needed hints on only 17.4% of samples and raised AIME24 from 30.0 to 43.3. DELTA-Code stayed below 1% for 450 steps, then "grokked". AutoOR went from 0% at pass@64 to 48.98% by fading syntax scaffolds. Caution: items at pass@8 = 0 lowered averages by 5.75, 11.24 and 1.07 points, and one harmful sample collapsed response length from 510.7 to 45.7 tokens in 58 steps ([2605.28388](https://arxiv.org/abs/2605.28388)).
+- **Effect / risk.** Recovers families that would otherwise be deleted. Risk: scaffolds are off-policy; withdraw them fully and watch for answer-parroting (note 20).
 - **First experiment.** On 3 audited families at p ≈ 0, compare the format ladder with prefixes. *Success:* the families enter the band, and the scaffolds are fully withdrawn by the end.
 
 ---
@@ -557,30 +581,35 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
   - Under identical PPO, Llama-3.2-3B plateaued at about 30% on Countdown while Qwen-2.5-3B reached about 60%. Priming closed the gap, and traces with **wrong** final answers worked as well as correct ones ([Cognitive behaviors](https://arxiv.org/abs/2503.01307)).
   - For agentic search, behavior-filtered trajectories beat outcome-filtered ones ([Behavior Priming](https://arxiv.org/abs/2510.06534)).
   - [SkillFactory](https://arxiv.org/abs/2512.04072) scored 2.8% vs 11.7% after SFT, but 25.1% vs 21.2% after GRPO.
+- **Effect / risk.** Cheaply unblocks RL on hard variants. Risk: priming can teach reflection for its own sake; judge by an RL probe.
 - **First experiment.** Prime on the teacher's *failed* attempts at your hardest synthetic items. *Success:* a 200-step RL probe beats the unprimed checkpoint.
 
 ### H2 · Distill verified trajectories on hardened agentic tasks
 `Established` · **Moderate** · Effort **M**
 
 *Pitch:* for search and terminal agents, SFT on hard verified trajectories goes a long way.
+- **Mechanism / seeds / verifier.** Harden tasks with C1 or D1, roll out a strong teacher, keep trajectories that pass the verifier (or behavior filters), then SFT.
 - **Evidence.**
   - FORT-Searcher is SFT-only and reaches BrowseComp 72.2 ([FORT](https://arxiv.org/abs/2606.12087)).
   - [OpenSeeker](https://arxiv.org/abs/2603.15594)-v2 used 10.6k SFT samples to beat Tongyi DeepResearch's CPT+SFT+RL on BrowseComp (46.0 vs 43.4).
   - [SkillSynth](https://arxiv.org/abs/2604.25727)'s skill-graph data beat single-skill SFT by 8.3 points on TB2.0.
   - Counter-evidence for procedural and scientific tasks: SFT scored −3.9 against +5.4 for RL on IPhO (Sim2Reason), and 26 against 80 on Hard-LP for [AutoOR](https://arxiv.org/abs/2604.16804).
 - **Rule.** Use SFT for breadth of agentic behavior and formats. Use RL for composition (B1, B2).
+- **Effect / risk.** Strong gains for search and terminal agents. Risk: SFT on hard procedural or scientific tasks often regresses; prefer RL there.
 - **First experiment.** Compute-matched SFT vs RL on the same hardened pool; note 09 lists this comparison as open. *Success:* a documented crossover point per domain.
 
 ### H3 · Select SFT prompts by difficulty and diversity, and don't filter answers
 `Established` · **Moderate** · Effort **S**
 
 *Pitch:* spend the SFT budget on hard, diverse prompts.
+- **Mechanism.** Rank prompts by LLM difficulty rating or teacher response length, keep many seeds with few rewrites each, and select traces for route diversity.
 - **Evidence.**
   - [OpenThoughts](https://arxiv.org/abs/2506.04178): the best question filters were LLM difficulty ratings for code and response length for math and science (+6% and +4% over random). No answer filtering averaged 41.9, against 40.0 with GPT verification.
   - [GLM-4.5](https://arxiv.org/abs/2508.06471): removing the bottom 50% of prompts by response length gave +2–4%.
   - X-Coder: 64k tasks × 1 solution beat 16k × 4.
   - Many seeds with few rewrites each beat the reverse ([Fidelity–Diversity](https://arxiv.org/abs/2607.04563)).
   - Route-diverse trace selection raised post-RL pass@8 by 16.9 points ([2609.33780](https://arxiv.org/abs/2609.33780)).
+- **Effect / risk.** More headroom per SFT token. Risk: length-based selection also favors verbosity; cap it and check held-out quality.
 - **First experiment.** At equal tokens, compare a response-length/LLM-difficulty selector with random selection. *Success:* held-out gain, and higher downstream RL headroom (large-k pass@k).
 
 ### H4 · Fault-injected and recovery-spliced trajectories
@@ -588,7 +617,8 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 
 *Pitch:* hard tasks need recovery skills that clean demonstrations never show.
 - **Mechanism.** Inject faults at action steps while collecting expert trajectories ([TermiGen](https://arxiv.org/abs/2602.07274)). Splice failing prefixes onto verified sibling successes, and mask the loss on the erroneous turns.
-- **Caution.** Off-policy injected errors do not teach self-correction (note 20). For that goal, use an on-policy correction turn ([SCoRe](https://arxiv.org/abs/2409.12917)).
+- **Why it should work.** TermiGen-Qwen2.5-Coder-32B reached a 31.3% average pass rate on TerminalBench, above o4-mini with Codex CLI; recovery splicing gave +5.59% over baselines across WebShop, SciWorld and TextCraft ([Agent-R](https://arxiv.org/abs/2501.11425)).
+- **Effect / risk.** Teaches diagnosis and recovery. Risk: off-policy injected errors do not teach self-correction (note 20). For that goal, use an on-policy correction turn ([SCoRe](https://arxiv.org/abs/2409.12917)).
 - **First experiment.** Inject 1–2 faults into 1k expert terminal trajectories and SFT on the recovered versions against clean-only traces. *Success:* recovery rate on held-out faulty environments rises with no drop in clean success.
 
 ---
@@ -605,6 +635,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
   - [Ineq-Comp](https://arxiv.org/abs/2505.12680): pass@32 falls from 66.2% on seeds to 47.0% and 42.1% on the composed types, and SFT on about 8K composed problems improved only the operator type it was trained on.
   - TÜLU-3-8B-DPO scores 81.1 on IFEval but 25.5 on IFBench.
   - [K&K](https://arxiv.org/abs/2410.23123) fine-tuning is near-perfect on training puzzles and brittle under one-statement perturbations.
+- **Effect / risk.** Separates skill from template learning. Risk: held-out families written by the same generator drift toward training; use another generator family.
 - **First experiment.** Freeze the suite before the first training run (§14.1). *Success:* each synthetic gain is reported alongside its held-out-family counterpart.
 
 ### I2 · Audit the generator's signature
@@ -613,6 +644,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* find what your generator leaks before the policy learns to exploit it.
 - **Mechanism.** Chi-square tests on answer-position and answer-value marginals; partial-input baselines; an LLM-ID classifier; n-gram and embedding decontamination, including variant contamination. Let an external RNG make every structural random choice.
 - **Evidence.** A five-way LLM-ID classifier reaches 97.1% accuracy, and students trained on two different teachers are 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)). LLM MCQ generators put the answer first 47.9–57.9% of the time ([2605.01846](https://arxiv.org/abs/2605.01846)). Preference leakage is 23.6% when the judge is also the generator, against 2.8% across model series (note 19).
+- **Effect / risk.** Removes exploitable regularities before RL. Risk: fixing one signature can create another; re-run after every generator change.
 - **First experiment.** Run the audit per generator and operator. *Success:* partial-input baselines are at chance and marginals are flat.
 
 ### I3 · A dashboard of per-operator yield and cost per accepted in-band task
@@ -625,6 +657,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
   - Yields range from 2.25% (SWE-Next) to about 50% (SWE-Factory), and vary 7.7–45.5% across mutation axes.
   - Profiling alone was about 36% of rollout tokens in note 18's worked example.
   - Training compute dwarfed generation spend: about $20K per arm, against about $16 for 319 variants ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
+- **Effect / risk.** Budget follows measured yield instead of intuition. Risk: yield alone favors easy-to-accept operators; also weight by held-out delta (G5).
 - **First experiment.** Instrument the pipeline. *Success:* budget moves weekly toward the operators with the best cost per accepted in-band task.
 
 ### I4 · Skill-level diversity telemetry and failure-cluster descriptors
@@ -633,6 +666,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* diversity collapses silently. Measure it on solutions, not on wording.
 - **Mechanism.** Similarity over canonical solver code ([R-Diverse](https://arxiv.org/abs/2602.13103)) or masked SQL templates; nearest-neighbour similarity per round; pass@k tracking. *Novel extension:* index a QD archive by clusters of policy-failure embeddings instead of hand-picked skill tags (note 14 lists this as unexplored).
 - **Evidence.** RST's nearest-neighbour similarity rose from 0.22 to 0.46 across rounds. Evol-Instruct pushed pass@8 below the untuned backbone (54.2 vs 55.1, [EvoTD](https://arxiv.org/abs/2605.11666)). [ACES](https://arxiv.org/abs/2310.10692) keeps 21,700 skill-combination niches. No diversity metric has yet been shown to predict RL gains (note 19).
+- **Effect / risk.** Catches collapse before downstream damage. Risk: surface-embedding metrics cannot tell reskins from new skills (note 11).
 - **First experiment.** Correlate 3 diversity metrics with the held-out RL deltas of 10 pools. *Success:* one metric ranks the pools correctly.
 
 ### I5 · A benchmark calibrating simulated hardness against real hardness
@@ -641,6 +675,7 @@ SFT tolerates label noise that RL does not, and benefits more from prompt diffic
 *Pitch:* check that a task hard in your simulator is also hard in the real environment.
 - **Mechanism.** Run the same tasks in a database-backed environment and in an LLM simulator, with and without perturbations. Report pass-rate correlation per band, stratified by the number of state changes (0 / 1–2 / 3–6 / 7–12).
 - **Why novel.** Note 17 lists it as open. EnvSimBench found a cliff once several variables change at once. On GUI-Genesis a VLM judge scores 63.76% where code assertions give 38.93%. PhoneWorld's functional-page coverage is 51–80% even though rendered-page coverage is above 96%.
+- **Effect / risk.** Tells you how far simulator-hardened tasks can be trusted. Risk: needs a real backend for the paired tasks, which is the expensive part.
 - **First experiment.** Build 300 paired tasks. *Success:* a per-stratum correlation table that sets how far you trust the simulator.
 
 ---
@@ -652,41 +687,49 @@ All eight ideas are `Novel` with **Proposal** evidence. Each is paired with the 
 ### J1 · One seed, four interaction operators (effort M)
 - **Mechanism.** Deliver one verifiable seed as sharded turns (N), across a horizon beyond the context window (H), with K injected tool outputs and a partner who withholds one needed fact. The label is preserved: the CONCAT or oracle view must still pass.
 - **Why.** Note 21: no open pipeline composes these operators or measures how their knobs interact. Each operator works alone: CONCAT keeps 95.1% of FULL; MemAgent trained at 32K–60K tokens keeps 71.09% at 3.5M; AgentDojo supplies the injection; CLARITI supplies the withholding.
+- **Effect / risk.** Realistic multi-turn difficulty from single-turn seeds. Risks: degenerate ask/abstain policies and simulator leakage (C4).
 - **First experiment.** A 2⁴ factorial design on 500 seeds. *Success:* identify which knobs interact super-additively. *Kill* if training on mixed cells transfers no better than training on single operators.
 
 ### J2 · "Harder-than" variants checked by the Lean kernel (effort M)
 - **Mechanism.** Accept a formal variant only with a kernel-checked proof that it implies the seed (or generalizes it), plus a certificate that a fixed automation portfolio (`aesop`, `exact?`) fails on it. Hardness is then at least the seed's by construction.
 - **Why.** Note 03: no pipeline enforces a verified "harder-than" relation at scale. Related certificates: InternGeometry's X_raw vs X_add, and LeanConjecturer's automation floor. Ineq-Comp shows that simple composition already breaks provers.
+- **Effect / risk.** Hardness by construction rather than by sampling. Risk: drift toward trivially stronger statements; keep a triviality/elegance filter.
 - **First experiment.** 1k Lean seeds, compared against STP-style conjecturing. *Success:* higher in-band yield with zero false statements.
 
 ### J3 · Hidden-invariant generators for transformative difficulty (effort M)
 - **Mechanism.** Generate instances whose natural solution is intractable at the chosen size but which have a short hidden invariant (periodicity, symmetry, reversibility). Verify by brute force at small n and with an invariant-based checker at large n. Warm up with dense rewards (DELTA-style).
 - **Why.** Transformative generalization is still about zero ([OMEGA](https://arxiv.org/abs/2506.18880), DELTA), and note 10 names exactly this direction. Horizon generalization did not transfer to harder Sudoku techniques (note 20).
+- **Effect / risk.** Targets new-strategy difficulty, which no current operator reliably produces. Risk: small-n pattern matching instead of insight; vary surface form.
 - **First experiment.** Train on 3 families at small n. *Kill* if nothing at large n is unlocked.
 
 ### J4 · An online re-complexification service inside RL (effort M–L)
 - **Mechanism.** A generator service reads the trainer's per-item p̂ stream. When an item saturates, it applies one operator (hop, fuzz, distractor, constraint), chosen by G3 priors and I3 yields. It gates the child and injects it with a version tag under the same domain quota. The parent moves to replay.
 - **Why.** Notes 07 and 18: online re-complexification is rare, and no framework generates or re-levels tasks online (SkyRL marks dropped groups as consumed). The closest published mechanisms are [RODS](https://arxiv.org/abs/2606.19047), which resamples isomorphic variants in the [0.20, 0.85] band and retires tasks above 0.95, and the RLAnything acceptance rule.
+- **Effect / risk.** Keeps the band full without stage-level regeneration. Risks: stale difficulty labels in async training and mix drift; replace within domain quotas.
 - **First experiment.** Compare against offline regeneration between stages, at equal compute. *Success:* a higher effective-prompt ratio across the run and a held-out gain. Report the staleness of difficulty labels.
 
 ### J5 · A hacker–fixer loop inside recursive escalation (effort S–M)
 - **Mechanism.** Run a hacker agent on every accepted child in each RST round. Fix, re-validate, and log the exploit rate by round and by operator.
 - **Why.** Note 16 asks whether hackability grows with escalation; nobody reports exploit rates by round. The shortcut counts (40 at complexity levels 1–10 vs 458 at 11–20) suggest it does.
+- **Effect / risk.** Keeps recursive escalation safe to train on. Risk: extra cost per round.
 - **First experiment.** 5 rounds on 200 seeds, with and without the loop. *Success:* an exploit-by-round curve, and fewer reward-hacking incidents in downstream RL.
 
 ### J6 · A typed constraint DSL with SMT witnesses for IF self-play (effort M)
 - **Mechanism.** Write constraints in a typed Scope/Target/Range DSL ([ScopeIF](https://arxiv.org/abs/2609.32189)). A solver proves the constraint set jointly satisfiable and emits a witness skeleton. The self-play generator is rewarded for hitting the pass-rate band, not for raw failure as in [SEIF](https://arxiv.org/abs/2605.07465), with anti-degeneracy terms. Push past the 5–7-constraint phase transition toward agent system prompts.
 - **Why.** Note 08 lists both formal satisfiability and learnability-shaped IF generators as open. "Output JSON" is jointly unsatisfiable with 9 of 24 instructions, and AgentIF averages 11.9 constraints per instruction.
+- **Effect / risk.** No unsatisfiable prompts, and direct band targeting. Risk: DSL constraints may be less natural; hold out natural constraint families.
 - **First experiment.** A DSL with 30 constraint types, compared against an LLM conflict filter. *Success:* zero unsatisfiable prompts and a higher in-band yield.
 
 ### J7 · First-error localization for agent trajectories, labelled by replay (effort M)
 - **Mechanism.** In a replayable environment, corrupt one action of a successful trajectory and re-simulate. If the checker then fails, label that step as the first error. Use the labels for verifier and process-reward training, and for "resume from state k" tasks.
 - **Why.** Note 20: exact first-error labels exist for logic, math and code ([2605.02395](https://arxiv.org/abs/2605.02395)) but are largely missing for multi-turn agents.
+- **Effect / risk.** Exact process labels for agents. Risk: constructed errors may not look on-policy (note 20); select corruptions by policy likelihood.
 - **First experiment.** Collect 5k labels and train an agent process reward model (PRM). *Success:* better accuracy and best-of-N gains than a PRM trained on judge labels.
 
 ### J8 · Research-mined monthly tasks with checkpoint rewards (effort M)
 - **Mechanism.** Every month, harvest post-cutoff statements and PRs, rewrite them to be self-contained, filter to the policy's band, and decompose them into checkpoints with machine-verifiable answers.
 - **Why.** Note 23. [RealMath](https://arxiv.org/abs/2505.12575) turned 14,747 theorems into 280 usable items, about 94% valid. [LemmaBench](https://arxiv.org/abs/2602.24173) accuracy rose from 12.3% to 40.8% in nine months, so freshness decays. [CritPt](https://arxiv.org/abs/2509.26574) splits 71 challenges into 190 checkpoints. [ResearchMath](https://arxiv.org/abs/2605.28003) SFT gave +2.1 even though only 3.7% and 4.3% of trajectories were judged correct.
+- **Effect / risk.** A self-refreshing supply of hard, uncontaminated tasks. Risks: low yield, unrefereed results, and share-alike license obligations (note 23).
 - **First experiment.** One month of harvest, with checkpoint rewards vs final-answer-only. *Success:* a non-zero gradient share and gains on held-out research-level items.
 
 ---
