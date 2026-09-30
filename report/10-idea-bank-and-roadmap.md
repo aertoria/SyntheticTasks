@@ -74,126 +74,87 @@ These nine ideas reuse the checker you already have, so labels are free and the 
 ### A1 · Re-audit the verifier, then harden the tests
 `Established` · **Strong** · Effort **S**
 
-- **Pitch.** Many "saturated" items are verifier artifacts. Tightening the check is the cheapest and safest way to make a task hard again.
-- **Mechanism.** Verifier strengthening: add near-miss and hack inputs, mutant-killing tests and disagreement-driven tests; convert exact-match checks to special judges; add a model fallback for rule-negative answers.
-- **Seeds / verifier.** Any item with an executable checker, plus a store of the policy's own passing and failing rollouts to use as near-miss candidates.
+- **Pitch.** Many "saturated" items are verifier artifacts; tightening the check is the cheapest, safest way to make them hard again.
+- **Mechanism / seeds / verifier.** Add near-miss and hack inputs, mutant-killing and disagreement-driven tests; convert exact match to special judges; add a model fallback for rule-negative answers. Needs any executable checker plus your own passing and failing rollouts as near-miss candidates.
 - **Why it should work.**
-  - [SWE-ABS](https://arxiv.org/abs/2603.00520) found that about 1 in 5 "solved" SWE-bench Verified patches were semantically wrong. The top score fell from 78.80% to 62.20% once the tests were strengthened.
+  - [SWE-ABS](https://arxiv.org/abs/2603.00520): about 1 in 5 "solved" SWE-bench Verified patches were semantically wrong; the top score fell from 78.80% to 62.20% under strengthened tests.
   - [EvolveCoder](https://arxiv.org/abs/2603.12698)'s evolved tests cut pass@1 from 43.80 to 31.22 *on the same problems*.
-  - With [HardTests](https://arxiv.org/abs/2505.24098), precision on AtCoder 4+ rose from 21.67 (TACO tests) to 60.00, and RL reached pass@10 64.76 vs 57.14.
-  - Verifiers also err the other way. Rule-based math checkers average 86% recall ([Rule vs model verifiers](https://arxiv.org/abs/2505.22203)).
-- **Effect / risk.** Items the policy was passing by exploit get their variance back. Risk: new tests that reject correct code. Keep a test only if every known-correct reference passes it, and track TPR and TNR (≥ 0.9, per note 11).
+  - [HardTests](https://arxiv.org/abs/2505.24098) raised precision on AtCoder 4+ from 21.67 (TACO tests) to 60.00, and RL on them reached pass@10 64.76 vs 57.14.
+  - The error also runs the other way: rule-based math checkers average 86% recall ([Rule vs model verifiers](https://arxiv.org/abs/2505.22203)).
+- **Effect / risk.** Restores variance on items passed by exploit. Risk: tests that reject correct code; keep a test only if every known-correct reference passes, and track TPR/TNR ≥ 0.9 (note 11).
 - **First experiment.** Harden tests on 200 items at p̂ = 1; re-check 200 at p̂ = 0 with a model fallback. *Success:* report the share of "saturated" items that re-enter (0, 1) and of "impossible" items that were false negatives, with new tests at TPR ≥ 0.9.
 
 ### A2 · Answer-preserving stem hardening
 `Established` · **Moderate** · Effort **S**
 
-- **Pitch.** Rewrite saturated questions so the *same* gold answer takes more reasoning to reach. No new labels are needed.
-- **Mechanism.** Nesting and abstraction operators from [MathForge](https://arxiv.org/abs/2601.20614) MQR:
-  - add irrelevant background;
-  - introduce an invented abstract term;
-  - replace a key number with an independent sub-problem whose answer is that number.
-
-  Or rewrite the question while the answer stays hidden, gated by pass rate ([SynthRL](https://arxiv.org/abs/2506.02096)).
-- **Seeds / verifier.** Exact-answer seeds (math, VQA, science) and a rule checker. Execute every nested sub-problem and require it to equal the constant it replaces.
-- **Why it should work.** In an o3 equivalence audit, 99%, 97% and 97% of MQR's three rewrite types kept the answer. A broken rewrite produces an all-zero GRPO group, so it is inert rather than harmful. With the DGPO optimizer the average rose from 37.61 (GRPO) to 42.17 on Qwen2.5-Math-7B; this confounds data and optimizer. SynthRL hardens only seeds at ≥ 12/16 and accepts a rewrite only if 4 ≤ passes ≤ original − 2.
-- **Effect / risk.** Refills the band from the easy end. Risk: the answer or a strong hint leaks into the rewrite. Screen with a model that sees only the rewrite and not the reasoning.
-- **First experiment.** Take 2k seeds at p̂ ≥ 0.9, make 3 rewrites each, and apply the SynthRL gate. Train GRPO on seeds + rewrites against seeds only, at equal steps. *Success:* the effective-prompt ratio rises, and the held-out paired CI excludes zero.
+- **Pitch.** Rewrite saturated questions so the *same* gold answer takes more reasoning; no new labels.
+- **Mechanism / seeds / verifier.** [MathForge](https://arxiv.org/abs/2601.20614) MQR's three rewrites: irrelevant background, an invented abstract term, and a key number replaced by an independent sub-problem (execute it; it must equal the constant it replaces). Or an answer-hidden rewrite gated by pass rate ([SynthRL](https://arxiv.org/abs/2506.02096)). Exact-answer seeds and a rule checker.
+- **Why it should work.** An o3 audit found 99/97/97% of MQR rewrites answer-equivalent, and a broken rewrite yields an all-zero GRPO group, so it is inert. With the DGPO optimizer, the average rose from 37.61 (GRPO) to 42.17 on Qwen2.5-Math-7B (data and optimizer confounded). SynthRL hardens only seeds at ≥ 12/16 and accepts a rewrite only if 4 ≤ passes ≤ original − 2.
+- **Effect / risk.** Refills the band from the easy end. Risk: answer or hint leakage; screen with a model that sees only the rewrite.
+- **First experiment.** 2k seeds at p̂ ≥ 0.9, 3 rewrites each, SynthRL gate; GRPO on seeds + rewrites vs seeds only at equal steps. *Success:* higher effective-prompt ratio and a held-out paired CI excluding zero.
 
 ### A3 · Answer-space hardening and special-judge conversion
 `Established` · **Strong** · Effort **S**
 
-- **Pitch.** Remove guessable formats, and make multi-answer problems trainable.
-- **Mechanism.** Convert MCQ to open-ended; canonicalize answers (integer targets, squarefree forms); drop yes/no and multi-part items; replace exact match with a generated special-judge program.
-- **Seeds / verifier.** MCQ or exact-match pools. For special judges, validate each judge against known-correct and known-incorrect submissions.
-- **Why it should work.**
-  - [Big-Math](https://arxiv.org/abs/2502.17387)-Reformulated skews harder: more than 50% of its items fall in the two hardest solve-rate quintiles.
-  - Labs convert or drop MCQ as routine practice (note 12).
-  - [ScaleBox](https://arxiv.org/abs/2604.27467) found that 14.57% of 34,757 code problems need special judges, and that exact match rejects 59.01% of correct solutions to them. The best generated judges reach TPR/TNR 96.3/88.5.
+- **Pitch.** Remove guessable formats and make multi-answer problems trainable.
+- **Mechanism / seeds / verifier.** MCQ → open-ended; canonical answers (integers, squarefree forms); drop yes/no and multi-part items; replace exact match with generated special judges, each validated on known-correct and known-incorrect submissions.
+- **Why it should work.** [Big-Math](https://arxiv.org/abs/2502.17387)-Reformulated puts more than 50% of items in the two hardest solve-rate quintiles, and labs routinely convert or drop MCQ (note 12). [ScaleBox](https://arxiv.org/abs/2604.27467): 14.57% of 34,757 code problems need special judges, exact match rejects 59.01% of correct solutions to them, and the best generated judges reach TPR/TNR 96.3/88.5.
 - **Effect / risk.** Removes guessing and false negatives. Risk: free-form answers need a stronger verifier; a Qwen2.5-72B judge gave up to 67% false positives on "master key" answers ([Master-RM](https://arxiv.org/abs/2507.08794)). For masked-span items, open-ended conversion failed (>83% zero accuracy, [Golden Goose](https://arxiv.org/abs/2601.22975)).
-- **First experiment.** Convert the MCQ slice, re-verify that each answer is unique, and test the checker metamorphically on equivalent rewrites of each answer. *Success:* chance-level accuracy from option-only baselines, and a verifier false-positive rate below 1% on the metamorphic set.
+- **First experiment.** Convert the MCQ slice, re-verify uniqueness, and test the checker metamorphically on equivalent answer rewrites. *Success:* option-only baselines at chance; verifier false positives below 1% on the metamorphic set.
 
 ### A4 · Shortcut and no-context filters as a pre-pass
 `Established` · **Strong** · Effort **S**
 
-- **Pitch.** Delete items that can be solved without the skill you want to train *before* you harden them. Otherwise the hardening is built on top of a shortcut.
-- **Mechanism.** Probe every item in five ways:
-  - **no-CoT guess:** drop if right within 8 tries ([Kimi k1.5](https://arxiv.org/abs/2501.12599));
-  - **tool-free model:** drop if it answers in ≥ 1 of 8 tries ([GLM-5](https://arxiv.org/abs/2602.15763));
-  - **closed-book:** [MemAgent](https://arxiv.org/abs/2507.02259) dropped about 50% of 80K HotpotQA questions this way;
-  - **no-data:** drop if ≥ 3 of 5 LLMs answer without the files ([DSGym](https://arxiv.org/abs/2601.16344));
-  - **component ablation:** remove one part of the problem and check whether it is still solvable.
-- **Why it should work.** Sim2Reason's component-ablation filter separated 7.14% from 13.15% on IPhO at 3B ([Sim2Reason](https://arxiv.org/abs/2604.11805)). LLM-written NLI is 86–96% solvable from the hypothesis alone (note 19).
-- **Effect / risk.** Fewer items, but each carries real signal. Risk: filters are specific to one policy, so re-run them each stage.
-- **First experiment.** Run the probes and report the shortcut rate per family. Then train on filtered vs unfiltered data at equal steps. *Success:* held-out accuracy is equal or better with fewer items.
+- **Pitch.** Delete items solvable without the target skill *before* hardening them, or the hardening sits on a shortcut.
+- **Mechanism / seeds / verifier.** Five probes: no-CoT guess, dropped if right within 8 tries ([Kimi k1.5](https://arxiv.org/abs/2501.12599)); tool-free model, dropped if right in ≥ 1 of 8 ([GLM-5](https://arxiv.org/abs/2602.15763)); closed-book ([MemAgent](https://arxiv.org/abs/2507.02259) dropped about 50% of 80K HotpotQA questions); no-data, dropped if ≥ 3 of 5 LLMs answer without the files ([DSGym](https://arxiv.org/abs/2601.16344)); and component ablation.
+- **Why it should work.** [Sim2Reason](https://arxiv.org/abs/2604.11805)'s component-ablation filter was the difference between 7.14% and 13.15% on IPhO at 3B. LLM-written NLI is 86–96% solvable from the hypothesis alone (note 19).
+- **Effect / risk.** Fewer items, each carrying real signal. Risk: filters are policy-specific; re-run each stage.
+- **First experiment.** Report the shortcut rate per family, then train filtered vs unfiltered at equal steps. *Success:* equal or better held-out accuracy with fewer items.
 
 ### A5 · Oracle-preserving perturbations for tool-use seeds
 `Established` · **Moderate** · Effort **S**
 
-- **Pitch.** Keep the gold call trace and answer unchanged, and make the inputs harder.
-- **Mechanism.**
-  - Add distractor and look-alike tools, indirect phrasing, and noisy, mixed-format or erroneous outputs ([COVERT](https://arxiv.org/abs/2604.09813)).
-  - Replace IDs with unique descriptions ([CoVe](https://arxiv.org/abs/2603.01940)).
-  - Collapse a multi-call trace into one high-level request whose intermediate steps must be inferred ([HardGen](https://arxiv.org/abs/2601.01498)).
-  - Require arguments to come from earlier turns ([SAP](https://arxiv.org/abs/2609.06124)).
+- **Pitch.** Keep the gold call trace and answer; make the inputs harder.
+- **Mechanism / seeds / verifier.** Distractor and look-alike tools, indirect phrasing, noisy or erroneous outputs ([COVERT](https://arxiv.org/abs/2604.09813)); IDs → unique descriptions ([CoVe](https://arxiv.org/abs/2603.01940)); a multi-call trace collapsed into one high-level request ([HardGen](https://arxiv.org/abs/2601.01498)); arguments that must come from earlier turns ([SAP](https://arxiv.org/abs/2609.06124)). The gold trace must still replay.
 - **Why it should work.** COVERT: BFCL v3 56.5 → 59.9 with RL alone (Qwen2.5-14B). HardGen: Qwen3-4B BFCLv3 62.13 → 79.14 after SFT+RL.
-- **Effect / risk.** A saturated tool set becomes learnable again at almost no verification cost. Risk: an ID-to-description swap can make the target ambiguous, so check with a DB query that the description is unique, as CoVe does. Tag any family that needs a judge.
-- **First experiment.** Apply the four families to 1k saturated tool tasks. Record the pass-rate drop per family and confirm the gold trace still replays. *Success:* ≥ 1 family per task lands in the band, and held-out tool benchmarks improve over the seeds-only arm.
+- **Effect / risk.** Saturated tool sets become learnable at near-zero verification cost. Risk: an ID-to-description swap can be ambiguous; check uniqueness with a DB query, as CoVe does, and tag judge-assisted families.
+- **First experiment.** Apply the four families to 1k saturated tool tasks. *Success:* ≥ 1 family per task lands in band, and held-out tool benchmarks beat a seeds-only arm.
 
 ### A6 · Strip hints, scaffolds and specifics (keep the checker)
 `Established` · **Moderate** · Effort **S**
 
-- **Pitch.** Many tasks are easy because the prompt does part of the work. Remove that part and leave the verifier alone.
-- **Mechanism.**
-  - Explicit → implicit goals ([WorkArena++](https://arxiv.org/abs/2407.05291)).
-  - Lower instruction specificity ([WTM](https://arxiv.org/abs/2608.07873)).
-  - Terse errors and no interface cues ([Environment Tuning](https://arxiv.org/abs/2510.10197)'s final stage).
-  - Start from the site root ([Go-Browse](https://arxiv.org/abs/2506.03533)).
-  - Redact names and examples, vaguify references ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
-- **Why it should work.**
-  - WorkArena++ L2 → L3: GPT-4o drops from 3.0% to 0%.
-  - WTM scores fall monotonically from Level 1 to Level 3.
-  - Information removal cut solve rates by 70–100 points in Trading Human Curation.
-- **Effect / risk.** Large, cheap drops in pass rate. Risk: an underspecified task is ambiguous rather than hard; FrogNano got 0% from a missing contract ([FrogNano](https://arxiv.org/abs/2609.07925)). Enforce RST's *contract validity*: every checked property must be stated or discoverable ([RST](https://arxiv.org/abs/2608.05466)). Keep the detailed twin so you can tell specification gaps from capability gaps.
-- **First experiment.** Build three rungs (full, abstract, minimal) for 300 saturated agent tasks and profile the policy. *Success:* ≥ 1 rung per task is in band, while a strong reference agent's success on the minimal rung stays within a few points of the full rung.
+- **Pitch.** Many tasks are easy because the prompt does part of the work; remove that part and leave the verifier alone.
+- **Mechanism / seeds / verifier.** Explicit → implicit goals ([WorkArena++](https://arxiv.org/abs/2407.05291)); lower instruction specificity ([WTM](https://arxiv.org/abs/2608.07873)); terse errors and no interface cues ([Environment Tuning](https://arxiv.org/abs/2510.10197)); start from the site root ([Go-Browse](https://arxiv.org/abs/2506.03533)); redact names and examples, vaguify references ([Trading Human Curation](https://arxiv.org/abs/2606.03800)).
+- **Why it should work.** WorkArena++ L2 → L3 takes GPT-4o from 3.0% to 0%; WTM scores fall monotonically from Level 1 to Level 3; information removal cut solve rates by 70–100 points.
+- **Effect / risk.** Large, cheap pass-rate drops. Risk: underspecification is ambiguity, not difficulty ([FrogNano](https://arxiv.org/abs/2609.07925) got 0% from a missing contract). Enforce [RST](https://arxiv.org/abs/2608.05466)'s *contract validity* (every checked property stated or discoverable) and keep the detailed twin to separate spec gaps from capability gaps.
+- **First experiment.** Build full / abstract / minimal rungs for 300 saturated agent tasks. *Success:* ≥ 1 rung per task in band, while a strong reference agent stays within a few points of its full-rung success on the minimal rung.
 
 ### A7 · Failure-prefix conditioning for saturated items
 `Established` (one study) · **Emerging** · Effort **S**
 
-- **Pitch.** An item the policy solves 127 times out of 128 still teaches something: start rollouts from its one failure.
-- **Mechanism.** Truncate a rare incorrect rollout and choose the prefix length so accuracy is about 0.5. Refresh prefixes as the policy moves.
-- **Why it should work.** On MATH items solved 121–127/128 times, the 5-benchmark average rose from 40.6 to 44.5. Plain RLVR on the same items gave 40.7, and freshly collected medium problems gave 44.0 ([Failure-prefix conditioning](https://arxiv.org/abs/2601.20829)).
-- **Effect / risk.** Signal from dead weight without any new tasks. Risk: prefixes drift off-policy. Measure any cost to adherence to correct prefixes.
-- **First experiment.** Replicate on your p̂ ≥ 0.95 pool on one non-Qwen model. *Success:* equal to or better than a "fresh medium problems" arm at matched compute.
+- **Pitch.** An item solved 127 times out of 128 still teaches something: start rollouts from its one failure.
+- **Mechanism / seeds / verifier.** Truncate a rare incorrect rollout, choosing the prefix length so accuracy is about 0.5; refresh prefixes as the policy moves. Unchanged checker.
+- **Why it should work.** On MATH items solved 121–127/128, the 5-benchmark average rose from 40.6 to 44.5, vs 40.7 for plain RLVR on the same items and 44.0 for freshly collected medium problems ([Failure-prefix conditioning](https://arxiv.org/abs/2601.20829)).
+- **Effect / risk.** Signal from dead weight. Risk: prefixes drift off-policy; measure the cost to adherence to correct prefixes.
+- **First experiment.** Replicate on your p̂ ≥ 0.95 pool with a non-Qwen model. *Success:* matches a "fresh medium problems" arm at equal compute.
 
 ### A8 · Meta-task relabeling: verdict, critique, error location
 `Established` · **Moderate** · Effort **S**
 
-- **Pitch.** Turn your own rollouts into "judge / locate / repair" tasks labelled by the verifier you already have.
-- **Mechanism.** Four task forms:
-  - Solution → verdict items. Swapping 20% of RL prompts for these helped ([Critique-Coder](https://arxiv.org/abs/2509.22824)).
-  - Inject an error, recompute the steps after it, and ask for the first wrong step ([2605.02395](https://arxiv.org/abs/2605.02395)).
-  - Inject one error into a correct artifact and ask where it is ([ViCrit](https://arxiv.org/abs/2506.10128)).
-  - An on-policy self-correction turn ([SCoRe](https://arxiv.org/abs/2409.12917)).
-- **Why it should work.** GPT-4-injected errors produced diagnostic data that was more than 90% accurate, although GPT-4 detects incorrect solutions only about 40% of the time ([MR-GSM8K](https://arxiv.org/abs/2312.17080)). ViCrit RL averaged 53.01, against 48.41 for caption SFT and 50.61 for the base.
-- **Effect / risk.** New hard tasks with exact labels. Risk: off-policy injected errors do **not** teach self-correction; the model repeats them (note 20). Use on-policy errors for that goal. Balance labels, and draw candidates from near-misses.
-- **First experiment.** Replace 20% of RL prompts with verdict items built from your rollouts. *Success:* verdict accuracy rises and the main task does not regress.
+- **Pitch.** Turn your own rollouts into judge, locate and repair tasks labelled by the existing verifier.
+- **Mechanism / seeds / verifier.** Solution → verdict items (swapping 20% of RL prompts for them helped [Critique-Coder](https://arxiv.org/abs/2509.22824)); inject an error, recompute downstream steps and ask for the first wrong step ([2605.02395](https://arxiv.org/abs/2605.02395)); locate one injected error ([ViCrit](https://arxiv.org/abs/2506.10128)); an on-policy self-correction turn ([SCoRe](https://arxiv.org/abs/2409.12917)).
+- **Why it should work.** GPT-4-injected errors gave diagnostic data more than 90% accurate even though GPT-4 detects incorrect solutions only about 40% of the time ([MR-GSM8K](https://arxiv.org/abs/2312.17080)). ViCrit RL averaged 53.01, vs 48.41 for caption SFT and 50.61 for the base.
+- **Effect / risk.** Hard tasks with exact labels. Risk: off-policy injected errors do **not** teach self-correction; the model repeats them (note 20). Balance labels and draw candidates from near-misses.
+- **First experiment.** Replace 20% of RL prompts with verdict items from your rollouts. *Success:* verdict accuracy rises and the main task does not regress.
 
 ### A9 · Worst-case variant scoring and method-breaking edits
 `Established` (evaluation) / `Extension` (training) · **Moderate** · Effort **S–M**
 
-- **Pitch.** Turn each seed into a small family of variants and score the worst case. Add minimal edits that break the method the model has memorized.
-- **Mechanism.** Two operators:
-  - **Variabilization:** turn the seed into a script with free constants, and reward only if all k variants are solved.
-  - **Hard perturbation:** make a minimal edit so the answer must differ from the original.
-- **Why it should work.**
-  - [DynaMath](https://arxiv.org/abs/2411.00836): worst-case accuracy is at most about 50% of average-case for all 14 VLMs tested.
-  - [Putnam-AXIOM](https://arxiv.org/abs/2508.08292) variations cost o1-preview 19.6 points.
-  - [MATH-Perturb](https://arxiv.org/abs/2502.06453) hard perturbations cost o1-mini 16.49%.
-  - [MathConstruct](https://arxiv.org/abs/2502.10197): o3-mini's robust accuracy was 42.2%, against 60.5% average.
-  - [QbQ](https://arxiv.org/abs/2608.01522) requires the variant's answer to differ from the parent's.
-- **Effect / risk.** Punishes template matching. Risk: some seeds depend on their specific constant; exclude those. Recompute every answer by program or CAS.
-- **First experiment.** Variabilize 500 seeds. Train with an all-k-variants reward against a single-instance reward. *Success:* worst-case accuracy on held-out variants improves more than average-case accuracy.
+- **Pitch.** Turn each seed into a small family and score the worst case; add minimal edits that break the memorized method.
+- **Mechanism / seeds / verifier.** Variabilization (a script with free constants; reward only if all k variants are solved) and hard perturbation (a minimal edit whose answer must differ from the original, per [QbQ](https://arxiv.org/abs/2608.01522)). Recompute every answer by program or CAS.
+- **Why it should work.** [DynaMath](https://arxiv.org/abs/2411.00836): worst-case accuracy is at most about 50% of average-case for all 14 VLMs tested. [Putnam-AXIOM](https://arxiv.org/abs/2508.08292) variations cost o1-preview 19.6 points; [MATH-Perturb](https://arxiv.org/abs/2502.06453) hard perturbations cost o1-mini 16.49%. [MathConstruct](https://arxiv.org/abs/2502.10197): o3-mini's robust accuracy was 42.2% vs 60.5% average.
+- **Effect / risk.** Punishes template matching. Risk: seeds whose solution depends on the specific constant; exclude them.
+- **First experiment.** Variabilize 500 seeds; train with an all-k-variants reward vs a single-instance reward. *Success:* worst-case accuracy on held-out variants improves more than average-case.
 
 ---
 

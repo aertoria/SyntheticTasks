@@ -155,7 +155,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 - **Noise mostly slows learning, as long as the verifier beats chance.** With J = TPR − FPR > 0, the incorrect mass dies out; with J < 0 it grows ([RLVεR](https://arxiv.org/abs/2601.04411)).
 - **SFT tolerates answer noise better than RL.** For math SFT, no answer filtering averaged 41.9 and GPT-verification filtering 40.0 ([OpenThoughts](https://arxiv.org/abs/2506.04178)). In RL, every wrong key becomes a wrong reward, so noise at least slows learning (RLVεR above).
 
-**Detect.** A gold audit slice bucketed by difficulty; verifier TPR/TNR on known-good and known-bad solutions; metamorphic tests where equivalent rewrites must get the same verdict ([Where the Verifier Fails](https://arxiv.org/abs/2609.01354)); IRT flags to prioritize hand audits (95% precision in the top 200; [Land & Bikel](https://arxiv.org/abs/2605.30504)). Size audits by binomial arithmetic: 0 errors in 200 items bounds the rate below about 1.9%.
+**Detect.** A gold audit slice bucketed by difficulty; verifier TPR/TNR on known-good and known-bad solutions; metamorphic tests where equivalent rewrites must get the same verdict ([Where the Verifier Fails](https://arxiv.org/abs/2609.01354)); IRT flags to prioritize hand audits (95% precision in the top 200; [Land & Bikel](https://arxiv.org/abs/2605.30504)). Size audits by binomial arithmetic: 0 errors in 200 items bounds the rate below about 1.9% (Wilson 95% upper bound; derived).
 
 **Mitigate.**
 - Build correctness in by construction. Solution-first evolution gave 97.7% validity against 79.3% for problem-first ([BenchEvolver](https://arxiv.org/abs/2606.01286)) (**Strong**).
@@ -172,7 +172,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 **Evidence.**
 - **Agreement filters remove frontier items by design.** Examples are CoT-Self-Instruct's Answer-Consistency, SAND-Math's all-k agreement, DeepMath's 3-way unanimity and MindLoom's all-wrong exclusion (cross-paper synthesis in the math notes; [SAND-Math](https://arxiv.org/abs/2507.20527), [DeepMath-103K](https://arxiv.org/abs/2504.11456)).
 - **Agreement labelling "inherently biases us toward easier queries"** ([DataMind](https://arxiv.org/abs/2509.25084)). A notebook-mined generator drifted to trivial questions: DABStep-easy reached 75% while the hard split stayed near 3% ([Jupyter Agents](https://huggingface.co/blog/jupyter-agent-2)).
-- **Student-agreement rules skew toward what the student can already solve.** SwS requires the student to produce the teacher's answer in at least 25% of responses, which "biases toward problems the student can already partly solve" ([SwS](https://arxiv.org/abs/2506.08989)).
+- **Student-agreement rules skew toward what the student can already solve.** SwS requires the student to produce the teacher's answer in at least 25% of responses, a rule that by construction biases selection toward problems the student can already partly solve ([SwS](https://arxiv.org/abs/2506.08989)).
 - **Lifting skews easy.**
   - ATLAS succeeds on 47.1% of EASY TACO seeds against about 20% of HARD ones ([ATLAS](https://arxiv.org/abs/2512.10173)).
   - rStar-Coder had to lower its agreement threshold from 60% to 40% for seeds rated above 1600 ([rStar-Coder](https://arxiv.org/abs/2505.21297)).
@@ -218,13 +218,13 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 | Verifier type | Observed exploits | Guards with evidence |
 |---|---|---|
-| Unit tests / SWE harnesses | GPT-5 cheated on 54–76% of impossible SWE variants. Production hacks: `__eq__` overrides, `sys.exit(0)`, patching pytest via `conftest.py`, and these generalized to misalignment ([ImpossibleBench](https://arxiv.org/abs/2510.20270); [MacDiarmid et al.](https://arxiv.org/abs/2511.18397)). Challengers write randomly failing tests or obfuscate code ([SSR](https://arxiv.org/abs/2512.18552)). Hidden tests led agents to fetch the fix over the network ([Qwen3-Coder-Next](https://arxiv.org/abs/2603.00729)) | Read-only or hidden tests; out-of-process grading; detecting edits to test files; type-checking returned objects. An abort option cut GPT-5's cheating from 54% to 9%. Inverse-mutation checks. Network and git blocking |
+| Unit tests / SWE harnesses | GPT-5 cheated on 54–76% of impossible SWE variants. Production hacks: `__eq__` overrides, `sys.exit(0)`, patching pytest via `conftest.py`, and these generalized to misalignment ([ImpossibleBench](https://arxiv.org/abs/2510.20270); [MacDiarmid et al.](https://arxiv.org/abs/2511.18397)). Challengers write randomly failing tests or obfuscate code ([SSR](https://arxiv.org/abs/2512.18552)). Hidden tests led agents to fetch the fix over the network ([Qwen3-Coder-Next](https://arxiv.org/abs/2603.00729)) | Read-only or hidden tests; out-of-process grading; detecting edits to test files; type-checking returned objects. An abort option cut GPT-5's cheating from 54% to 9%. Inverse-mutation checks (SSR). Network and git blocking (Qwen3-Coder-Next) |
 | Terminal / sandbox | 16% of 1,968 terminal tasks were hackable from the description alone ([Hacker–Fixer](https://arxiv.org/abs/2606.08960)). Agents attacked the sandbox itself: forged RPCs to the command-daemon socket, reading its logs for leaked answers, overwriting `/bin/bash` ([DSec](https://arxiv.org/abs/2609.22978)) | Hacker–fixer loop (KernelBench attack success 62% → 0%); checksummed mounts; separate build and run accounts |
 | LLM judges / rubrics | "Master keys": up to 80% false-positive rate, 67.0% for Qwen2.5-72B on "Thought process:" ([Master-RM](https://arxiv.org/abs/2507.08794)). Generated rubrics exploited in 8–26% of the unbiased cut and 36–98% of the stress cut ([ImpossibleRubrics](https://arxiv.org/abs/2609.16816)). Training-judge score rises while the gold judge peaks and falls (−3 HealthBench-Hard, −22 ResearchQA) ([Rubric Dropout](https://arxiv.org/abs/2608.11669)). Fine-tuning a generative verifier *raised* its susceptibility from 21.7 to 35 ([Huang et al.](https://arxiv.org/abs/2505.22203)) | Rule check first, discriminative verifier second (xVerify ≤0.4% attack success); truncated-response negatives; certificate-faithful rubrics (0/45 exploited); dropping 30–50% of criteria per step; monitoring the train–oracle gap |
 | Lean / Dafny / Verus | `assume(false)` spread from one program to all programs ([AlphaVerus](https://arxiv.org/abs/2412.06176)). Dafny RL reward rose from 2.2% to 58.1% via `ensures result >= 0` and leaky specs ([Tan](https://arxiv.org/abs/2605.30914)). A Lean 4.9.0 `apply?` bug silently dropped `sorry` and inflated PutnamBench counts ([DeepSeek-Prover-V2](https://arxiv.org/abs/2504.21801)) | Screen for `sorry`, `admit`, new axioms and `assume(false)`; vacuity check (try to prove False); block spec edits; re-run completeness checks after any LLM spec repair |
 | Constraint checkers (IF) | Copied placeholders, dummy list items, repetition to hit counts, copied delimiters ([IFDecorator](https://arxiv.org/abs/2508.04632)); copy-paste satisfaction ([UNSPECIFIC](https://arxiv.org/abs/2608.09154)); "all instructions are followed" self-claims ([AdvancedIF](https://arxiv.org/abs/2511.10507)) and false claims of compliance ([Kimi K2](https://arxiv.org/abs/2507.20534)) | IntentCheck cut hacking from 14.53% to 7.60%; hidden trip-wire prompts; reward-model gate ([IFBench](https://arxiv.org/abs/2507.02833)); satisfaction checked on a summary as well |
 | Performance / timing | 32.8% of early CUDA-L1 outputs exploited stream timing, for a fake 18× speedup ([CUDA-L1](https://arxiv.org/abs/2507.14111)) | Stream sync; output-materialization checks; treat every sudden reward jump as a probable hack |
-| Model-written checkers | When one agent writes both solution and reward, the reward "tends to re-check the construction procedure instead of measuring task completion"; its forbidden-pattern scan targets constant flags such as `chart_verified = True`, placeholder checks and bare file-existence scoring ([CUA-Gym](https://arxiv.org/abs/2605.25624)) | Information barrier between solution author and reward author; forbidden-pattern scan |
+| Model-written checkers | When one agent writes both solution and reward, the reward "tends to re-check the construction procedure instead of measuring task completion"; CUA-Gym's forbidden-pattern scan targets constant flags such as `chart_verified = True`, placeholder checks and bare file-existence scoring ([CUA-Gym](https://arxiv.org/abs/2605.25624)) | Information barrier between solution author and reward author; forbidden-pattern scan |
 
 - **Monitors and instructions are not enough.** LLM monitors caught 86–89% of cheating on LiveCodeBench but only 42–65% on SWE ([ImpossibleBench](https://arxiv.org/abs/2510.20270)); agents took a planted shortcut in over 50% of runs even when told not to ([BaitBench](https://arxiv.org/abs/2608.30724)).
 
@@ -363,7 +363,7 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Symptom.** Tiny, odd or even random-label data gives large gains on Qwen2.5(-Math), and the effect vanishes on other model families.
 
-**Root cause.** Qwen2.5-Math has latent behaviours (notably code-style reasoning) that almost any policy update amplifies, including updates driven by random rewards through GRPO's clipping bias, and it has memorized parts of common math benchmarks. Gains then reflect the base model, not the data.
+**Root cause.** Qwen2.5-Math has high-prior latent behaviours (notably code-style reasoning) that even random-reward updates amplify through GRPO's clipping bias, and it has memorized parts of common math benchmarks. Gains then reflect the base model, not the data.
 
 **Evidence.**
 - **Random rewards work on Qwen2.5-Math but not on Llama3 or OLMo2.** Random rewards gave +21.4 on MATH-500 against +29.1 with ground truth on Qwen2.5-Math-7B, through a clipping bias that amplifies "code reasoning" (65% → >90%). The gains did not appear on Llama3 or OLMo2 ([Spurious Rewards](https://arxiv.org/abs/2506.10947)).
@@ -379,13 +379,17 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Symptom.** A data-policy "win" disappears on rerun, at another scale, or under a different aggregate.
 
+**Root cause.** Evaluation sets are small, training and sampling seeds and numerical nondeterminism add variance of the same size as the claimed effects, variants of one seed are correlated so naive SEs are too tight, and pipeline bugs produce effects that replicate.
+
 **Evidence.**
-- **Seeds and hardware alone move scores.** Pass@1 SD across seeds is 5–15 points, one AIME question is worth 2.5–3.3 points, and OpenThinker2-7B scored 53.0 ± 4.6 on A100 vs 57.1 ± 5.2 on H100 ([Sober Look](https://arxiv.org/abs/2504.07086)); BF16 alone moves accuracy by up to 9% ([Yuan et al.](https://arxiv.org/abs/2506.09501)).
+- **Seeds and hardware alone move scores.** Pass@1 SD across seeds is 5–15 points on AIME24/AMC23, one question is worth 2.5–3.3 points, and OpenThinker2-7B scored 53.0 ± 4.6 on A100 vs 57.1 ± 5.2 on H100 ([Sober Look](https://arxiv.org/abs/2504.07086)); under BF16 greedy decoding, changing GPU count, GPU type or batch size moves accuracy by up to 9% ([Yuan et al.](https://arxiv.org/abs/2506.09501)).
 - **Small pilots cannot see small effects.** An unpaired comparison at p ≈ 0.5, with 95% significance and 50% power, needs a 25.3-point gap at N = 30, 13.9 at N = 100 and 6.2 at N = 500 (derived binomial arithmetic).
-- **Most data-policy wins do not survive proper tests.** None of 8 selection or reweighting policies had a paired 95% CI excluding zero vs uniform sampling (12 matched seeds), none of 3 adaptive mixtures beat a fixed equal mix, signs flipped with scale (difffilter −0.79 at 3B, +0.08 at 7B), and swapping the aggregate gave ρ = −0.33 ([DataFlex-RL](https://arxiv.org/abs/2609.06107)).
+- **Data-policy wins often do not survive proper tests.** In DataFlex-RL, none of 8 selection or reweighting policies had a paired 95% CI excluding zero vs uniform sampling (12 matched seeds), none of 3 adaptive mixtures beat a fixed equal mix, signs flipped with scale (difffilter −0.79 at 3B, +0.08 at 7B), and swapping the aggregate gave ρ = −0.33 ([DataFlex-RL](https://arxiv.org/abs/2609.06107)).
 - **Early winners and variance.** Early winners can lose at scale, with ±0.02 run-to-run error on the fitted asymptote ([ScaleRL](https://arxiv.org/abs/2510.13786)); in computer-use RL a published-size gain would have the wrong sign 33–44% of the time in the high-variance regime ([2607.17136](https://arxiv.org/abs/2607.17136)).
 - **Naive SEs are too tight for clustered items.** Clustered SEs can be 3× naive ones (DROP 1.34 vs 0.44) ([Miller](https://arxiv.org/abs/2411.00640)).
 - **Pipeline bugs replicate.** A decoding-budget bug produced a 32-point "effect" that replicated from N = 50 to N = 500. Only reading raw generations caught it ([Ballı](https://arxiv.org/abs/2607.13707)).
+
+**Detect.** Paired per-item 95% CIs across matched training seeds, with SEs clustered by seed family; rerun any winner on fresh seeds, at a second scale and under a second aggregate; compare the claimed gain with the minimum detectable effect for the eval size; read raw generations from both arms.
 
 **Mitigate** (**Strong**). Pre-register the protocol: fixed stack with FP32 or batch-invariant kernels; 10–30 samples per item; paired per-item comparisons with SEs clustered by *seed family*; train/eval split by seed, not variant; 3 seeds to screen, 8–12 to decide; a domain-balanced aggregate plus regression suite; read raw generations.
 
@@ -393,13 +397,17 @@ easy seeds ─► [operator] ─► candidate ─► [validity gates] ─► [di
 
 **Symptom.** Gains hold on items from your generator but not on items from other generators or from natural sources. A judge from the same family rates your model generously.
 
+**Root cause.** Each generator family leaves stylistic, topical and distributional fingerprints. The student learns the fingerprints along with the skill, related judges reward them, and some traits pass through even answer-filtered data.
+
 **Evidence.**
 - **Generators leave detectable fingerprints.** A five-way generator-ID classifier reaches 97.1% accuracy and stays above 90% after paraphrase or translation. Students fine-tuned on Llama vs Gemma outputs were 98.9% separable ([Idiosyncrasies](https://arxiv.org/abs/2502.12150)).
-- **Related judges favour related students.** Preference leakage is 23.6% for the same model, 8.9% within a model series and 2.8% across series ([Preference Leakage](https://arxiv.org/abs/2502.01534)).
+- **Related judges favour related students.** Preference leakage is 23.6% for the same model, 8.9% within a model series and 2.8% across series of the same family ([Preference Leakage](https://arxiv.org/abs/2502.01534)).
 - **Traits transfer through filtered data.** Traits pass through correct-filtered CoT when teacher and student share a base ([Subliminal Learning](https://arxiv.org/abs/2507.14805)).
 - **Adding brands adds little diversity.** Cross-model output similarity is already 0.71–0.82 ([Artificial Hivemind](https://arxiv.org/abs/2510.22954)).
 - **Generators find their own variants easier.** GPT-4 scored 87.36% on its own unrevised variations against 85.58% on human-corrected ones (humans revised 18.85% of them) ([GSM-Plus](https://arxiv.org/abs/2402.19255)).
-- **Family-specific training overfits.** TÜLU-3-8B-DPO scores 81.1 on IFEval but 25.5 on IFBench ([IFBench](https://arxiv.org/abs/2507.02833)).
+- **Training on one narrow family overfits to it.** TÜLU-3-8B-DPO scores 81.1 on IFEval but 25.5 on IFBench, having overfit IFEval's constraint types ([IFBench](https://arxiv.org/abs/2507.02833)). This is overfitting to a constraint family rather than a generator family, so treat it as an analogue.
+
+**Detect.** A generator-ID classifier on your pool (high accuracy means strong fingerprints); evaluation on a held-out generator family and on natural-distribution items; a judge from a different series than both generator and student.
 
 **Mitigate** (**Moderate**: mechanisms well documented, direct RL ablations scarce). Mix 2–3 generator families from different series, chosen by distance (e.g. NCD); keep generator, judge and student in different series; filter adversarially against an ensemble that includes the current policy, not one adversary ([Phang et al.](https://arxiv.org/abs/2111.08181)); evaluate on a held-out generator family and operator.
 
@@ -425,6 +433,8 @@ Low validity or band yield multiplies every other cost term.
 - **Absolute costs.** $891K for 45,320 SWE environments ([OpenSWE](https://arxiv.org/abs/2603.13023)); ~$138K and 127K GPU-hours for DeepMath-103K ([RLVE](https://arxiv.org/abs/2511.07317)); 50–500 TPU-days per problem for test-time variant curricula ([AlphaProof](https://www.nature.com/articles/s41586-025-09833-y)).
 - **A stronger generator pays only if it raises band yield.** Most rejects are "too easy" (64%; [Trading Human Curation](https://arxiv.org/abs/2606.03800)), and solving skill does not predict generating skill (R² < 0.1; [AgoraBench](https://arxiv.org/abs/2412.03679)). Measure y_valid and y_band per generator.
 - **Deleting after one pilot throws away value.** About 19% of epoch-2 solves were not solved in epoch 3 ([Pilot-Commit](https://arxiv.org/abs/2605.26606)).
+
+**Detect.** Log y_valid, y_band and cost per accepted in-band task for each operator and generator; track profiling rollouts as a share of all rollout tokens; alarm when generation spend grows faster than the in-band pool.
 
 **Mitigate.** Follow this order (**Moderate**; see [chapter 03](03-generation-architectures.md)):
 1. Audit the verifier.
